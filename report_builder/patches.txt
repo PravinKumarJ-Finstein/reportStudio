@@ -1,6 +1,9 @@
 [pre_model_sync]
 # Patches added in this section will be executed before doctypes are migrated
 # Read docs to understand patches: https://frappeframework.com/docs/v14/user/en/database-migrations
+report_builder.patches.v1_2.drop_report_studio_chart
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
+report_builder.patches.v1_0.publish_existing_studio_reports
+report_builder.patches.v1_1.republish_with_inline_runner

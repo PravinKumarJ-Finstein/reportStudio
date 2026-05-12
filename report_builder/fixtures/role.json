@@ -1,0 +1,11 @@
+[
+ {
+  "doctype": "Role",
+  "role_name": "Report Studio User",
+  "desk_access": 1,
+  "disabled": 0,
+  "is_custom": 0,
+  "name": "Report Studio User",
+  "two_factor_auth": 0
+ }
+]
