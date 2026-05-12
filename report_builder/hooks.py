@@ -23,6 +23,7 @@ add_to_apps_screen = [
 
 fixtures = [
 	{"dt": "Role", "filters": [["role_name", "in", ["Report Studio User"]]]},
+	{"dt": "Report Studio Report", "filters": [["name", "in", ["RPT-00067"]]]},
 ]
 
 # Includes in <head>
