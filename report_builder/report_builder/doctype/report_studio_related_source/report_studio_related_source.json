@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "creation": "2026-04-27 11:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "alias",
+  "related_doctype",
+  "join_type",
+  "is_child_table",
+  "child_parent_field",
+  "conditions"
+ ],
+ "fields": [
+  {
+   "fieldname": "alias",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Alias",
+   "reqd": 1
+  },
+  {
+   "fieldname": "related_doctype",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Join DocType",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "default": "Left Join",
+   "fieldname": "join_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Join Type",
+   "options": "Left Join\nInner Join",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_child_table",
+   "fieldtype": "Check",
+   "label": "Is Child Table Join"
+  },
+  {
+   "fieldname": "child_parent_field",
+   "fieldtype": "Data",
+   "label": "Child Parent Field",
+   "description": "Table fieldname on the parent doctype (e.g. 'items'). Set when is_child_table is on.",
+   "depends_on": "eval:doc.is_child_table"
+  },
+  {
+   "fieldname": "conditions",
+   "fieldtype": "Long Text",
+   "label": "Match Conditions (JSON)"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-27 11:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Report Builder",
+ "name": "Report Studio Related Source",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC",
+ "states": []
+}

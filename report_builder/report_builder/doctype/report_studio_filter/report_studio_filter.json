@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "creation": "2026-04-27 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "source",
+  "field_path",
+  "fieldtype",
+  "granularity",
+  "operator",
+  "value",
+  "value_to",
+  "value_list",
+  "is_runtime"
+ ],
+ "fields": [
+  {
+   "fieldname": "source",
+   "fieldtype": "Data",
+   "label": "Source"
+  },
+  {
+   "fieldname": "field_path",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Field",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fieldtype",
+   "fieldtype": "Data",
+   "label": "Field Type",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:['Date','Datetime'].includes(doc.fieldtype)",
+   "fieldname": "granularity",
+   "fieldtype": "Select",
+   "label": "Date Granularity",
+   "options": "\nAll\nDate\nMonth\nYear"
+  },
+  {
+   "fieldname": "operator",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Condition",
+   "options": "Equals\nNot Equals\nContains\nDoes Not Contain\nGreater Than\nLess Than\nBetween\nIn\nNot In\nIs Set\nIs Not Set",
+   "reqd": 1
+  },
+  {
+   "fieldname": "value",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Value"
+  },
+  {
+   "fieldname": "value_to",
+   "fieldtype": "Data",
+   "label": "Value To"
+  },
+  {
+   "fieldname": "value_list",
+   "fieldtype": "Small Text",
+   "label": "Values"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_runtime",
+   "fieldtype": "Check",
+   "label": "Ask at run time"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-29 11:45:00.000000",
+ "modified_by": "Administrator",
+ "module": "Report Builder",
+ "name": "Report Studio Filter",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC",
+ "states": []
+}

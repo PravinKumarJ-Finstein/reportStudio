@@ -1,0 +1,82 @@
+{
+ "actions": [],
+ "creation": "2026-04-27 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "source",
+  "field_path",
+  "calculation_alias",
+  "label",
+  "fieldtype",
+  "aggregate",
+  "width",
+  "visibility_rule",
+  "format_rules"
+ ],
+ "fields": [
+  {
+   "fieldname": "source",
+   "fieldtype": "Data",
+   "label": "Source"
+  },
+  {
+   "fieldname": "field_path",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Field"
+  },
+  {
+   "fieldname": "calculation_alias",
+   "fieldtype": "Data",
+   "label": "Calculation"
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Display Label"
+  },
+  {
+   "fieldname": "fieldtype",
+   "fieldtype": "Data",
+   "label": "Field Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "aggregate",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Summary",
+   "options": "\nCount\nSum\nAvg\nMin\nMax"
+  },
+  {
+   "fieldname": "width",
+   "fieldtype": "Int",
+   "label": "Width"
+  },
+  {
+   "fieldname": "visibility_rule",
+   "fieldtype": "Long Text",
+   "label": "Visibility Rule (JSON)"
+  },
+  {
+   "fieldname": "format_rules",
+   "fieldtype": "Long Text",
+   "label": "Format Rules (JSON)"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-27 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Report Builder",
+ "name": "Report Studio Column",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC",
+ "states": []
+}

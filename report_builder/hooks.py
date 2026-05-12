@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 app_name = "report_builder"
 app_title = "Report Builder"
 app_publisher = "Pravin"
@@ -10,16 +11,19 @@ app_license = "mit"
 
 # required_apps = []
 
-# Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "report_builder",
-# 		"logo": "/assets/report_builder/logo.png",
-# 		"title": "Report Builder",
-# 		"route": "/report_builder",
-# 		"has_permission": "report_builder.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": "report_builder",
+		"logo": "/assets/report_builder/images/report-studio.svg",
+		"title": "Report Studio",
+		"route": "/app/report-studio",
+		"has_permission": "report_builder.api.permission.has_app_permission",
+	}
+]
+
+fixtures = [
+	{"dt": "Role", "filters": [["role_name", "in", ["Report Studio User"]]]},
+]
 
 # Includes in <head>
 # ------------------
@@ -117,13 +121,13 @@ app_license = "mit"
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+permission_query_conditions = {
+	"Report Studio Report": "report_builder.api.permission.report_query_conditions",
+}
+
+has_permission = {
+	"Report Studio Report": "report_builder.api.permission.has_report_permission",
+}
 
 # DocType Class
 # ---------------

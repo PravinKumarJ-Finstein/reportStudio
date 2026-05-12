@@ -1,0 +1,231 @@
+{
+ "actions": [],
+ "autoname": "format:RPT-{#####}",
+ "creation": "2026-04-27 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "base_doctype",
+  "description",
+  "section_visibility",
+  "visibility",
+  "is_public",
+  "page_size",
+  "section_related",
+  "related_sources",
+  "section_calculations",
+  "calculations",
+  "section_columns",
+  "columns",
+  "section_filters",
+  "filters",
+  "section_group_by",
+  "group_by",
+  "section_sort",
+  "sort",
+  "section_share",
+  "shared_roles",
+  "section_meta",
+  "last_run_at",
+  "linked_report_name",
+  "is_published"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Report Title",
+   "reqd": 1,
+   "unique": 0
+  },
+  {
+   "fieldname": "base_doctype",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Data Source",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "section_visibility",
+   "fieldtype": "Section Break",
+   "label": "Access"
+  },
+  {
+   "default": "Private",
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Visibility",
+   "options": "Private\nPublic\nShared with Roles",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_public",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Public",
+   "read_only": 1
+  },
+  {
+   "default": "20",
+   "fieldname": "page_size",
+   "fieldtype": "Int",
+   "label": "Default Page Size"
+  },
+  {
+   "fieldname": "section_related",
+   "fieldtype": "Section Break",
+   "label": "Join DocTypes"
+  },
+  {
+   "fieldname": "related_sources",
+   "fieldtype": "Table",
+   "label": "Join DocTypes",
+   "options": "Report Studio Related Source"
+  },
+  {
+   "fieldname": "section_calculations",
+   "fieldtype": "Section Break",
+   "label": "Calculations"
+  },
+  {
+   "fieldname": "calculations",
+   "fieldtype": "Table",
+   "label": "Calculations",
+   "options": "Report Studio Calculation"
+  },
+  {
+   "fieldname": "section_columns",
+   "fieldtype": "Section Break",
+   "label": "Columns"
+  },
+  {
+   "fieldname": "columns",
+   "fieldtype": "Table",
+   "label": "Columns",
+   "options": "Report Studio Column"
+  },
+  {
+   "fieldname": "section_filters",
+   "fieldtype": "Section Break",
+   "label": "Filters"
+  },
+  {
+   "fieldname": "filters",
+   "fieldtype": "Table",
+   "label": "Filters",
+   "options": "Report Studio Filter"
+  },
+  {
+   "fieldname": "section_group_by",
+   "fieldtype": "Section Break",
+   "label": "Group Data By"
+  },
+  {
+   "fieldname": "group_by",
+   "fieldtype": "Table",
+   "label": "Group Data By",
+   "options": "Report Studio Group By"
+  },
+  {
+   "fieldname": "section_sort",
+   "fieldtype": "Section Break",
+   "label": "Sort Order"
+  },
+  {
+   "fieldname": "sort",
+   "fieldtype": "Table",
+   "label": "Sort Order",
+   "options": "Report Studio Sort"
+  },
+  {
+   "fieldname": "section_share",
+   "fieldtype": "Section Break",
+   "label": "Sharing"
+  },
+  {
+   "fieldname": "shared_roles",
+   "fieldtype": "Table",
+   "label": "Shared with Roles",
+   "options": "Report Studio Share"
+  },
+  {
+   "fieldname": "section_meta",
+   "fieldtype": "Section Break",
+   "label": "Meta"
+  },
+  {
+   "fieldname": "last_run_at",
+   "fieldtype": "Datetime",
+   "label": "Last Previewed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "linked_report_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Linked Standard Report",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Published as Standard Report",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-27 16:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Report Builder",
+ "name": "Report Studio Report",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "if_owner": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Report Studio User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "title,base_doctype",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 1
+}

@@ -1,0 +1,762 @@
+/* =========================================================================
+ * Report Studio — themed UI
+ *
+ * Color palette (kept narrow on purpose):
+ *   indigo  #6366f1   primary / Columns
+ *   amber   #f59e0b   Filters
+ *   emerald #10b981   Group / Calculations
+ *   slate   #64748b   Sort
+ *   violet  #8b5cf6   Calc badges
+ *   rose    #f43f5e   destructive / errors
+ *
+ * Background gradient on the page wrapper, soft elevation on cards,
+ * a 3 px coloured accent bar on each "bucket" so the user can scan the
+ * workspace at a glance.
+ * ========================================================================= */
+
+:root {
+	--rs-indigo: #6366f1;
+	--rs-indigo-soft: #eef2ff;
+	--rs-amber: #f59e0b;
+	--rs-amber-soft: #fef3c7;
+	--rs-emerald: #10b981;
+	--rs-emerald-soft: #d1fae5;
+	--rs-slate: #64748b;
+	--rs-slate-soft: #f1f5f9;
+	--rs-violet: #8b5cf6;
+	--rs-violet-soft: #ede9fe;
+	--rs-rose: #f43f5e;
+	--rs-rose-soft: #ffe4e6;
+
+	--rs-card-bg: var(--card-bg, #ffffff);
+	--rs-page-bg: linear-gradient(180deg, #f8fafc 0%, #eff2f7 100%);
+	--rs-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+	--rs-shadow-md: 0 4px 14px -6px rgba(15, 23, 42, 0.12), 0 1px 3px rgba(15, 23, 42, 0.05);
+	--rs-shadow-lg: 0 12px 32px -16px rgba(15, 23, 42, 0.18), 0 1px 3px rgba(15, 23, 42, 0.06);
+	--rs-radius: 10px;
+}
+
+/* Layout shell ============================================================ */
+
+.rs-root {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+	padding: 16px 20px 40px;
+	background: var(--rs-page-bg);
+	min-height: 100%;
+}
+
+/* Source picker row */
+.rs-source-row {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 14px 16px;
+	background: var(--rs-card-bg);
+	border: 1px solid var(--border-color, #e5e7eb);
+	border-radius: var(--rs-radius);
+	box-shadow: var(--rs-shadow-sm);
+}
+.rs-source-picker {
+	flex: 0 0 360px;
+	max-width: 360px;
+}
+.rs-source-picker .form-group { margin: 0; }
+.rs-source-picker label {
+	color: var(--rs-indigo);
+	font-weight: 600;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+.rs-source-status { font-size: 12px; color: var(--text-muted, #64748b); }
+
+/* Builder grid (palette + buckets) ======================================== */
+
+.rs-builder {
+	display: grid;
+	grid-template-columns: 300px 1fr;
+	gap: 16px;
+	min-height: 380px;
+	align-items: stretch;
+}
+
+.rs-right-col {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	min-width: 0;
+}
+
+.rs-section-title {
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--rs-indigo);
+	margin-bottom: 8px;
+}
+
+/* Palette ================================================================= */
+
+.rs-palette-wrap {
+	background: var(--rs-card-bg);
+	border: 1px solid var(--border-color, #e5e7eb);
+	border-radius: var(--rs-radius);
+	padding: 12px;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	box-shadow: var(--rs-shadow-sm);
+	border-top: 3px solid var(--rs-indigo);
+	/* Fixed-height panel — adding more fields scrolls the inner list
+	   instead of growing the card. Stays pinned to the top of the
+	   builder while the buckets scroll underneath, so you can drop on
+	   any bucket without losing the palette. */
+	align-self: start;
+	position: sticky;
+	top: 16px;
+	height: calc((100vh - 140px) * 1.25);
+}
+
+.rs-palette-search {
+	width: 100%;
+	margin-bottom: 10px;
+	height: 32px;
+	border-radius: 8px;
+	border: 1px solid var(--border-color, #d1d5db);
+	padding: 4px 10px;
+	transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.rs-palette-search:focus {
+	outline: none;
+	border-color: var(--rs-indigo);
+	box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+.rs-palette {
+	flex: 1;
+	overflow: auto;
+	min-height: 0;
+	padding-right: 2px;
+}
+
+.rs-palette-section { margin-bottom: 12px; }
+.rs-palette-section-title {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--rs-slate);
+	padding: 5px 8px;
+	background: var(--rs-slate-soft);
+	border-radius: 6px;
+	margin-bottom: 4px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.rs-palette-tree { padding-left: 2px; }
+
+.rs-field-leaf {
+	padding: 6px 9px;
+	border-radius: 6px;
+	cursor: grab;
+	user-select: none;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	flex: 1;
+	min-width: 0;
+	transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+	border-left: 2px solid transparent;
+}
+.rs-field-leaf:hover {
+	background: var(--rs-indigo-soft);
+	border-left-color: var(--rs-indigo);
+}
+.rs-field-leaf:active { cursor: grabbing; }
+
+.rs-field-label {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.rs-field-meta {
+	color: var(--text-muted, #94a3b8);
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.rs-link-child {
+	background: linear-gradient(to right, var(--rs-indigo-soft) 0, transparent 4px);
+}
+
+.rs-caret {
+	flex: 0 0 auto;
+	color: var(--rs-indigo);
+	font-size: 11px;
+	width: 24px;
+	height: 26px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	border-radius: 4px;
+	user-select: none;
+	transition: background 120ms ease, color 120ms ease;
+}
+.rs-caret:hover { background: var(--rs-indigo-soft); }
+.rs-caret:focus-visible { outline: 2px solid var(--rs-indigo); outline-offset: 1px; }
+
+.rs-calc-leaf {
+	background: linear-gradient(to right, var(--rs-violet-soft) 0%, transparent 100%);
+	border-left: 2px solid var(--rs-violet) !important;
+}
+.rs-calc-leaf .rs-field-meta { color: var(--rs-violet); }
+
+/* Buckets ================================================================= */
+
+.rs-buckets {
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-template-areas:
+		"columns"
+		"filters"
+		"groupby";
+	gap: 14px;
+}
+
+.rs-bucket[data-bucket="columns"] { grid-area: columns; }
+.rs-bucket[data-bucket="filters"] { grid-area: filters; }
+.rs-bucket[data-bucket="groupBy"] { grid-area: groupby; }
+
+/* Columns is the primary bucket — give it the extra real estate the Sort
+   bucket vacated, so reports with many fields don't feel cramped. */
+.rs-bucket-columns {
+	min-height: 280px;
+}
+.rs-bucket-columns .rs-bucket-rows {
+	min-height: 220px;
+}
+
+@media (max-width: 900px) {
+	.rs-buckets {
+		grid-template-columns: 1fr;
+		grid-template-areas:
+			"columns"
+			"filters"
+			"groupby";
+	}
+}
+
+.rs-bucket {
+	background: var(--rs-card-bg);
+	border: 1px solid var(--border-color, #e5e7eb);
+	border-radius: var(--rs-radius);
+	padding: 12px 14px;
+	min-height: 110px;
+	box-shadow: var(--rs-shadow-sm);
+	transition: box-shadow 160ms ease, border-color 160ms ease;
+	border-top: 3px solid transparent;
+	display: flex;
+	flex-direction: column;
+}
+.rs-bucket:hover { box-shadow: var(--rs-shadow-md); }
+
+/* per-bucket accent colors */
+.rs-bucket[data-bucket="columns"]   { border-top-color: var(--rs-indigo); }
+.rs-bucket[data-bucket="filters"]   { border-top-color: var(--rs-amber); }
+.rs-bucket[data-bucket="groupBy"]   { border-top-color: var(--rs-emerald); }
+
+.rs-bucket-title {
+	font-size: 13px;
+	font-weight: 700;
+	margin-bottom: 2px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.rs-bucket-title::before {
+	content: "";
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--rs-slate);
+}
+.rs-bucket[data-bucket="columns"] .rs-bucket-title::before  { background: var(--rs-indigo); }
+.rs-bucket[data-bucket="filters"] .rs-bucket-title::before  { background: var(--rs-amber); }
+.rs-bucket[data-bucket="groupBy"] .rs-bucket-title::before  { background: var(--rs-emerald); }
+
+.rs-bucket-help {
+	font-size: 11px;
+	color: var(--text-muted, #64748b);
+	margin-bottom: 10px;
+}
+
+.rs-bucket-rows {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-height: 40px;
+	flex: 1 1 auto;
+}
+
+.rs-bucket-empty {
+	padding: 14px;
+	border: 1.5px dashed var(--border-color, #cbd5e1);
+	border-radius: 8px;
+	text-align: center;
+	color: var(--text-muted, #64748b);
+	font-size: 12px;
+	transition: background 160ms ease, border-color 160ms ease;
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 0;
+}
+.rs-bucket:hover .rs-bucket-empty {
+	background: var(--rs-indigo-soft);
+	border-color: var(--rs-indigo);
+}
+
+.rs-bucket-row {
+	background: var(--rs-card-bg);
+	border: 1px solid var(--border-color, #e5e7eb);
+	border-radius: 8px;
+	padding: 8px 10px;
+	transition: box-shadow 120ms ease, transform 120ms ease;
+}
+.rs-bucket-row:hover { box-shadow: var(--rs-shadow-sm); }
+
+.rs-row-main {
+	display: grid;
+	grid-template-columns: minmax(140px, 1.4fr) 150px auto;
+	align-items: center;
+	gap: 10px;
+}
+
+.rs-row-main .rs-row-aggregate,
+.rs-row-main .rs-group-granularity,
+.rs-row-main .rs-sort-direction { min-width: 130px; }
+
+.rs-filter-row {
+	grid-template-columns: minmax(140px, 1.2fr) 140px 1fr 1fr 56px auto;
+}
+.rs-filter-row .rs-filter-value-2 { min-width: 0; }
+/* When the row also includes a granularity Select (Date/Datetime fields),
+ * widen the grid to accommodate it without squashing the value cells. */
+.rs-filter-row:has(.rs-filter-gran) {
+	grid-template-columns: minmax(140px, 1fr) 110px 130px 1fr 1fr 56px auto;
+}
+.rs-filter-runtime {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 11px;
+	color: var(--text-muted, #6c7680);
+	margin: 0;
+	cursor: pointer;
+	user-select: none;
+}
+.rs-filter-runtime input { margin: 0; }
+.rs-bucket-input {
+	height: 28px;
+	font-size: 12px;
+}
+.rs-bucket-input-wrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rs-bucket-hint {
+	font-size: 10px;
+	color: var(--text-muted, #94a3b8);
+	letter-spacing: 0.02em;
+	padding: 0 2px;
+}
+
+.rs-row-label {
+	font-size: 13px;
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	cursor: grab;
+	user-select: none;
+	-webkit-user-select: none;
+	padding: 2px 4px;
+	border-radius: 4px;
+	transition: background 120ms ease;
+}
+.rs-row-label:hover { background: var(--rs-indigo-soft); }
+.rs-row-label:active { cursor: grabbing; }
+
+/* While any drag is in progress, kill text selection across the page so the
+ * cursor doesn't paint over the chrome and the dragged ghost stays clean. */
+body.rs-dragging,
+body.rs-dragging * {
+	user-select: none !important;
+	-webkit-user-select: none !important;
+	cursor: grabbing !important;
+}
+/* Restore cursor on inputs even mid-drag so the form fields don't look broken
+ * if the user releases on top of one. */
+body.rs-dragging input,
+body.rs-dragging select,
+body.rs-dragging textarea { cursor: text !important; }
+
+/* Sortable's fallback-mode floating clone.
+ *
+ * `position: fixed` + `transform: none` makes the inline `left`/`top` set by
+ * the JS mousemove listener (startGhostFollow) viewport-absolute, overriding
+ * Sortable's own translate3d math. The ghost then tracks the cursor exactly,
+ * regardless of any ancestor transforms, scroll, or grid layout. */
+.sortable-fallback {
+	position: fixed !important;
+	/* `left` / `top` set by the JS mousemove listener — DO NOT mark them
+	 * !important here, otherwise the inline style updates lose the cascade
+	 * fight and the ghost freezes at 0,0. */
+	transform: none !important;
+	margin: 0 !important;
+	pointer-events: none !important;
+	opacity: 0.95 !important;
+	z-index: 9999 !important;
+	max-width: 320px;
+	box-shadow: 0 14px 36px -10px rgba(15, 23, 42, 0.4),
+	            0 2px 6px rgba(15, 23, 42, 0.12) !important;
+	background: var(--rs-card-bg, #fff) !important;
+	border-radius: 8px;
+	border: 1px solid var(--rs-indigo) !important;
+}
+.sortable-fallback .rs-row-main { background: var(--rs-card-bg, #fff); }
+
+/* The placeholder where the item will land — a faint indigo dashed slot. */
+.sortable-ghost {
+	opacity: 0.35;
+	background: var(--rs-indigo-soft) !important;
+	border: 1.5px dashed var(--rs-indigo) !important;
+}
+
+/* The original element while it's being dragged — slightly faded so the user
+ * can tell which one moved. */
+.sortable-chosen { opacity: 0.6; }
+
+.rs-row-badge {
+	display: inline-flex;
+	align-items: center;
+	margin-left: 4px;
+	padding: 2px 7px;
+	border-radius: 999px;
+	font-size: 9.5px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	vertical-align: middle;
+	line-height: 1.2;
+}
+.rs-badge-group  { background: var(--rs-emerald-soft); color: #065f46; }
+.rs-badge-source { background: var(--rs-amber-soft); color: #92400e; }
+.rs-badge-calc   { background: var(--rs-violet-soft); color: #5b21b6; }
+.rs-badge-rule   { background: var(--rs-slate-soft); color: #334155; padding: 2px 5px; }
+
+/* Row actions */
+.rs-row-remove {
+	padding: 0 8px;
+	line-height: 22px;
+	border-radius: 6px !important;
+	color: var(--rs-rose);
+	border-color: var(--border-color, #e5e7eb) !important;
+	transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.rs-row-remove:hover {
+	background: var(--rs-rose-soft) !important;
+	color: var(--rs-rose) !important;
+	border-color: var(--rs-rose) !important;
+}
+
+.rs-row-rename,
+.rs-row-icon {
+	background: transparent;
+	border: 0;
+	color: var(--text-muted, #64748b);
+	font-size: 12px;
+	margin-left: 4px;
+	padding: 2px 5px;
+	cursor: pointer;
+	border-radius: 5px;
+	transition: background 120ms ease, color 120ms ease;
+}
+.rs-row-rename:hover { background: var(--rs-indigo-soft); color: var(--rs-indigo); }
+.rs-row-icon[title*="visibility"]:hover,
+.rs-row-icon[title*="show"]:hover,
+.rs-row-icon[title*="Show"]:hover { background: var(--rs-emerald-soft); color: var(--rs-emerald); }
+.rs-row-icon[title*="format"]:hover,
+.rs-row-icon[title*="Conditional"]:hover { background: var(--rs-violet-soft); color: var(--rs-violet); }
+
+/* Extras row: Related / Calc cards ========================================= */
+
+.rs-extras {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px;
+}
+
+.rs-card {
+	background: var(--rs-card-bg);
+	border: 1px solid var(--border-color, #e5e7eb);
+	border-radius: var(--rs-radius);
+	padding: 12px 14px;
+	box-shadow: var(--rs-shadow-sm);
+	border-top: 3px solid transparent;
+	transition: box-shadow 160ms ease;
+}
+.rs-card:hover { box-shadow: var(--rs-shadow-md); }
+.rs-related-card { border-top-color: var(--rs-amber); }
+.rs-calc-card    { border-top-color: var(--rs-emerald); }
+
+.rs-card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-weight: 700;
+	font-size: 13px;
+	margin-bottom: 4px;
+}
+.rs-card-help { color: var(--text-muted, #64748b); font-size: 11px; margin-bottom: 8px; }
+.rs-card-empty { padding: 6px 0; color: var(--text-muted, #94a3b8); }
+
+/* Add buttons in card headers — colored to match the card accent */
+.rs-card .btn.rs-add-related {
+	background: var(--rs-amber-soft);
+	color: #92400e;
+	border-color: var(--rs-amber-soft);
+}
+.rs-card .btn.rs-add-related:hover {
+	background: var(--rs-amber);
+	color: white;
+	border-color: var(--rs-amber);
+}
+.rs-card .btn.rs-add-calc {
+	background: var(--rs-emerald-soft);
+	color: #065f46;
+	border-color: var(--rs-emerald-soft);
+}
+.rs-card .btn.rs-add-calc:hover {
+	background: var(--rs-emerald);
+	color: white;
+	border-color: var(--rs-emerald);
+}
+
+.rs-related-row,
+.rs-calc-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 8px 4px;
+	border-top: 1px dashed var(--border-color, #e2e8f0);
+	gap: 8px;
+}
+.rs-related-row:first-child,
+.rs-calc-row:first-child { border-top: 0; }
+
+.rs-related-info,
+.rs-calc-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+
+.rs-source-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	margin-right: 6px;
+	border-radius: 999px;
+	background: var(--rs-amber-soft);
+	color: #92400e;
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* Preview pane ============================================================ */
+
+.rs-preview-wrap {
+	background: var(--rs-card-bg);
+	border: 1px solid var(--border-color, #e5e7eb);
+	border-radius: var(--rs-radius);
+	padding: 14px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	box-shadow: var(--rs-shadow-sm);
+	border-top: 3px solid var(--rs-indigo);
+}
+
+.rs-preview-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	padding-bottom: 6px;
+	border-bottom: 1px solid var(--border-color, #f1f5f9);
+}
+
+.rs-preview-btn {
+	background: var(--rs-indigo) !important;
+	border-color: var(--rs-indigo) !important;
+	color: white !important;
+	font-weight: 600 !important;
+	border-radius: 8px !important;
+	padding: 6px 14px !important;
+	transition: filter 120ms ease, transform 120ms ease;
+}
+.rs-preview-btn:hover { filter: brightness(0.95); }
+
+.rs-pager {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	margin-left: auto;
+}
+.rs-pager .btn { border-radius: 6px !important; }
+.rs-page-info { font-size: 12px; color: var(--text-muted, #64748b); }
+.rs-page-size { width: 80px; height: 28px; border-radius: 6px; }
+
+.rs-preview {
+	min-height: 240px;
+	overflow: auto;
+	width: 100%;
+	border-radius: 8px;
+	background: var(--rs-card-bg);
+}
+
+.rs-preview .dt-scrollable {
+	max-height: 60vh;
+	overflow-x: auto !important;
+	overflow-y: auto !important;
+}
+.rs-preview .data-table {
+	width: max-content;
+	min-width: 100%;
+}
+.rs-preview .dt-header {
+	background: var(--rs-slate-soft) !important;
+	font-weight: 600;
+}
+.rs-preview .dt-row:hover .dt-cell {
+	background: var(--rs-indigo-soft) !important;
+}
+
+.rs-cell-link {
+	color: var(--rs-indigo);
+	text-decoration: none;
+	font-weight: 500;
+}
+.rs-cell-link:hover { text-decoration: underline; }
+
+/* Dialog tweaks =========================================================== */
+
+.rs-cond-row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	margin-bottom: 8px;
+	flex-wrap: wrap;
+	padding: 6px;
+	border-radius: 6px;
+	background: var(--rs-slate-soft);
+}
+
+.rs-calc-builder {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-bottom: 8px;
+	padding: 10px;
+	border-radius: 6px;
+	background: var(--rs-slate-soft);
+}
+.rs-calc-operand,
+.rs-calc-operand2 {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: nowrap;
+}
+.rs-calc-operand > select,
+.rs-calc-operand2 > select {
+	flex: 0 0 110px;
+}
+.rs-operand-body {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+.rs-calc-op-row {
+	display: flex;
+	justify-content: center;
+}
+.rs-calc-op-row .rs-calc-op {
+	width: 56px;
+	text-align: center;
+}
+
+.rs-cond-row select,
+.rs-calc-builder select,
+.rs-calc-builder input {
+	height: 30px;
+	font-size: 12px;
+	border-radius: 6px;
+	border: 1px solid var(--border-color, #cbd5e1);
+}
+.rs-cond-row select:focus,
+.rs-calc-builder select:focus,
+.rs-calc-builder input:focus {
+	border-color: var(--rs-indigo);
+	outline: none;
+	box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.18);
+}
+
+.rs-cond-remove,
+.rs-fmt-remove {
+	color: var(--rs-rose);
+	border-radius: 6px !important;
+}
+
+.rs-fmt-row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	margin-bottom: 8px;
+	padding: 8px;
+	background: var(--rs-slate-soft);
+	border-radius: 6px;
+}
+
+/* Toast / cell link */
+.rs-cell-link[target="_blank"]::after {
+	content: " ↗";
+	font-size: 0.8em;
+	opacity: 0.6;
+}
+
+/* Dark mode tweaks ======================================================== */
+
+[data-theme-mode="dark"] .rs-root,
+.dark .rs-root {
+	--rs-page-bg: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+	--rs-card-bg: #1e293b;
+}
+[data-theme-mode="dark"] .rs-bucket-row,
+.dark .rs-bucket-row { background: #1e293b; }
+[data-theme-mode="dark"] .rs-palette-section-title,
+.dark .rs-palette-section-title { background: #334155; color: #e2e8f0; }
+[data-theme-mode="dark"] .rs-bucket-empty,
+.dark .rs-bucket-empty { background: rgba(99,102,241,0.05); }
