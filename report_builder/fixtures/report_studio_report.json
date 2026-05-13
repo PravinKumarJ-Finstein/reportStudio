@@ -1,0 +1,115 @@
+[
+ {
+  "base_doctype": "Material Request",
+  "calculations": [],
+  "columns": [
+   {
+    "aggregate": "",
+    "calculation_alias": null,
+    "field_path": "item_name",
+    "fieldtype": "Data",
+    "format_rules": null,
+    "label": "item_name",
+    "parent": "RPT-00066",
+    "parentfield": "columns",
+    "parenttype": "Report Studio Report",
+    "source": "c_base_items",
+    "visibility_rule": null,
+    "width": 0
+   },
+   {
+    "aggregate": "",
+    "calculation_alias": null,
+    "field_path": "qty",
+    "fieldtype": "Float",
+    "format_rules": null,
+    "label": "qty",
+    "parent": "RPT-00066",
+    "parentfield": "columns",
+    "parenttype": "Report Studio Report",
+    "source": "c_base_items",
+    "visibility_rule": null,
+    "width": 0
+   },
+   {
+    "aggregate": "",
+    "calculation_alias": null,
+    "field_path": "qty",
+    "fieldtype": "Float",
+    "format_rules": null,
+    "label": "qty",
+    "parent": "RPT-00066",
+    "parentfield": "columns",
+    "parenttype": "Report Studio Report",
+    "source": "c___new___items",
+    "visibility_rule": null,
+    "width": 0
+   },
+   {
+    "aggregate": "",
+    "calculation_alias": null,
+    "field_path": "rejected_qty",
+    "fieldtype": "Float",
+    "format_rules": null,
+    "label": "rejected_qty",
+    "parent": "RPT-00066",
+    "parentfield": "columns",
+    "parenttype": "Report Studio Report",
+    "source": "c___new___items",
+    "visibility_rule": null,
+    "width": 0
+   }
+  ],
+  "description": "",
+  "docstatus": 0,
+  "doctype": "Report Studio Report",
+  "filters": [],
+  "group_by": [],
+  "is_public": 0,
+  "is_published": 1,
+  "last_run_at": null,
+  "linked_report_name": "pr d 2 (RPT-00066)",
+  "modified": "2026-05-12 12:27:35.857484",
+  "name": "RPT-00066",
+  "page_size": 20,
+  "related_sources": [
+   {
+    "alias": "c_base_items",
+    "child_parent_field": null,
+    "conditions": "[{\"left_source\": \"\", \"left_path\": \"name\", \"operator\": \"=\", \"right_path\": \"parent\"}]",
+    "is_child_table": 0,
+    "join_type": "Left Join",
+    "parent": "RPT-00066",
+    "parentfield": "related_sources",
+    "parenttype": "Report Studio Report",
+    "related_doctype": "Material Request Item"
+   },
+   {
+    "alias": "PR",
+    "child_parent_field": null,
+    "conditions": "[{\"left_source\": \"\", \"left_path\": \"name\", \"operator\": \"=\", \"right_path\": \"items.material_request\"}]",
+    "is_child_table": 0,
+    "join_type": "Left Join",
+    "parent": "RPT-00066",
+    "parentfield": "related_sources",
+    "parenttype": "Report Studio Report",
+    "related_doctype": "Purchase Receipt"
+   },
+   {
+    "alias": "c___new___items",
+    "child_parent_field": null,
+    "conditions": "[{\"left_source\": \"PR\", \"left_path\": \"name\", \"operator\": \"=\", \"right_path\": \"parent\"}, {\"left_source\": \"c_base_items\", \"left_path\": \"name\", \"operator\": \"=\", \"right_path\": \"material_request_item\"}]",
+    "is_child_table": 0,
+    "join_type": "Left Join",
+    "parent": "RPT-00066",
+    "parentfield": "related_sources",
+    "parenttype": "Report Studio Report",
+    "related_doctype": "Purchase Receipt Item"
+   }
+  ],
+  "shared_roles": [],
+  "sort": [],
+  "title": "pr d 2",
+  "visibility": "Private"
+ }
+]

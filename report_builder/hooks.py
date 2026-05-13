@@ -22,7 +22,8 @@ add_to_apps_screen = [
 ]
 
 fixtures = [
-	{"dt": "Role", "filters": [["role_name", "in", ["Report Studio User"]]]},
+    {"dt": "Role", "filters": [["role_name", "in", ["Report Studio User"]]]},
+    {"dt": "Report Studio Report", "filters": [["name", "in", ["RPT-00066"]]]},
 ]
 
 # Includes in <head>
@@ -250,4 +251,3 @@ has_permission = {
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-
