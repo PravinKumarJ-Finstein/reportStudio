@@ -2050,6 +2050,36 @@ class ReportStudio {
 					$row.find(".rs-child-label").text(`${ct.label} (${ct.child_doctype})`);
 					const $cb = $row.find(".rs-child-cb");
 					const existing = arr.find((p) => p.parent_alias === sec.ownerAlias && p.parent_field === ct.fieldname);
+					// Look for an already-committed child join (in state, not in
+					// this dialog's pending list and not in initialChildAliases
+					// which the edit flow uses to track pending re-inserts).
+					// Without this guard a user re-ticking a child that's already
+					// joined produced a duplicate alias (c_base_items_2) and the
+					// engine emitted two LEFT JOINs on the same child table —
+					// MR rows then cross-multiplied (1 row × all rows).
+					let lockedCommitted = null;
+					if (!existing && sec.side === "base") {
+						lockedCommitted = this.state.relatedSources.find((r) => {
+							if (!r.is_child_table) return false;
+							if ((r.child_parent_field || "") !== ct.fieldname) return false;
+							if (initialChildAliases.has(r.alias)) return false;
+							const parentAlias = r.conditions?.[0]?.left_source ?? "";
+							return parentAlias === (sec.ownerAlias || "");
+						});
+					}
+					if (lockedCommitted) {
+						$cb.prop("checked", true);
+						$cb.prop("disabled", true);
+						$row.css("opacity", "0.65");
+						$row.attr(
+							"title",
+							__("Already joined as {0}. Remove that join first to re-add it.", [
+								lockedCommitted.alias,
+							])
+						);
+						$host.append($row);
+						return;
+					}
 					$cb.prop("checked", !!existing);
 					$cb.on("change", async () => {
 						if ($cb.is(":checked")) {
@@ -2155,16 +2185,112 @@ class ReportStudio {
 		return fields;
 	}
 
+	_pruneOrphanChildSources() {
+		// Walk this.state.relatedSources and drop any is_child_table row that
+		// nothing references — i.e. no column / filter / groupBy / sort uses
+		// it as `source`, AND no other related source uses it as `left_source`
+		// in a join condition. Called from _loadReport so stale saves don't
+		// keep showing ghost child sources in the join dialog dropdowns.
+		const isReferenced = (alias) => {
+			const inRow = (r) => (r.source || "") === alias;
+			if ((this.state.columns || []).some(inRow)) return true;
+			if ((this.state.filters || []).some(inRow)) return true;
+			if ((this.state.groupBy || []).some(inRow)) return true;
+			if ((this.state.sort || []).some(inRow)) return true;
+			for (const other of this.state.relatedSources) {
+				if (other.alias === alias) continue;
+				for (const c of other.conditions || []) {
+					if ((c.left_source || "") === alias) return true;
+				}
+			}
+			return false;
+		};
+
+		// Repeat until stable: removing one orphan can orphan another (a
+		// child whose only reference was another orphan).
+		while (true) {
+			const orphans = this.state.relatedSources
+				.filter((r) => r.is_child_table && !isReferenced(r.alias))
+				.map((r) => r.alias);
+			if (!orphans.length) break;
+			const orphanSet = new Set(orphans);
+			this.state.relatedSources = this.state.relatedSources.filter(
+				(r) => !orphanSet.has(r.alias)
+			);
+			orphans.forEach((a) => this._dropSource(a));
+		}
+	}
+
 	_removeRelatedSource(idx) {
 		const rs = this.state.relatedSources[idx];
 		if (!rs) return;
-		this.state.relatedSources.splice(idx, 1);
-		// purge any rows referencing this source
-		const filterFn = (r) => (r.source || "") !== rs.alias;
-		this.state.columns = this.state.columns.filter(filterFn);
-		this.state.filters = this.state.filters.filter(filterFn);
-		this.state.groupBy = this.state.groupBy.filter(filterFn);
-		this._dropSource(rs.alias);
+
+		// Cascade: child-table sources are materialized as their own related
+		// sources but hidden from the join list (see _renderRelatedList).
+		// Without this cascade they survive the splice as orphans and reappear
+		// next time the report is opened — that's the "2 child docs still
+		// there" bug.
+		//
+		// We remove two cohorts of child-tables:
+		//   1. Related-side children — those whose first condition's
+		//      left_source IS this rs.alias (clearly owned by this join).
+		//   2. Orphaned base-side children — those that, after dropping rs,
+		//      have no remaining references in columns/filters/groupBy/sort.
+		//      Base children added solely to support this join's match
+		//      conditions fall into this bucket; ones the user uses elsewhere
+		//      are preserved.
+		const removedAliases = new Set([rs.alias]);
+
+		for (const other of this.state.relatedSources) {
+			if (!other.is_child_table) continue;
+			if (other.alias === rs.alias) continue;
+			const leftSource = other.conditions?.[0]?.left_source || "";
+			if (leftSource === rs.alias) removedAliases.add(other.alias);
+		}
+
+		// Drop everything in `removedAliases` from the related sources, then
+		// scan for now-orphaned base-side children.
+		this.state.relatedSources = this.state.relatedSources.filter(
+			(r) => !removedAliases.has(r.alias)
+		);
+
+		const stillReferenced = (alias) => {
+			const inRow = (r) => (r.source || "") === alias;
+			if (this.state.columns.some(inRow)) return true;
+			if (this.state.filters.some(inRow)) return true;
+			if (this.state.groupBy.some(inRow)) return true;
+			if ((this.state.sort || []).some(inRow)) return true;
+			// Other related sources may reference this child via their join
+			// conditions (left_source). Keep it if any do.
+			for (const other of this.state.relatedSources) {
+				for (const c of other.conditions || []) {
+					if ((c.left_source || "") === alias) return true;
+				}
+			}
+			return false;
+		};
+
+		const orphans = this.state.relatedSources
+			.filter((r) => r.is_child_table && !stillReferenced(r.alias))
+			.map((r) => r.alias);
+		if (orphans.length) {
+			const orphanSet = new Set(orphans);
+			this.state.relatedSources = this.state.relatedSources.filter(
+				(r) => !orphanSet.has(r.alias)
+			);
+			orphans.forEach((a) => removedAliases.add(a));
+		}
+
+		// Purge any column/filter/groupBy/sort rows that referenced anything
+		// we just removed.
+		const keepRow = (r) => !removedAliases.has(r.source || "");
+		this.state.columns = this.state.columns.filter(keepRow);
+		this.state.filters = this.state.filters.filter(keepRow);
+		this.state.groupBy = this.state.groupBy.filter(keepRow);
+		if (this.state.sort) this.state.sort = this.state.sort.filter(keepRow);
+
+		removedAliases.forEach((alias) => this._dropSource(alias));
+
 		this._renderRelatedList();
 		this._renderPalette();
 		this._renderAllBuckets();
@@ -2789,6 +2915,12 @@ class ReportStudio {
 			return;
 		}
 
+		// Belt-and-suspenders: prune any orphan child sources right before
+		// serialising. _removeRelatedSource already cascades and _loadReport
+		// already cleans on open, but this guarantees the persisted shape is
+		// minimal regardless of how state was mutated this session.
+		this._pruneOrphanChildSources();
+
 		let configJson;
 		try {
 			configJson = JSON.stringify(this._buildConfig());
@@ -3004,6 +3136,13 @@ class ReportStudio {
 				fieldtype: g.fieldtype,
 				granularity: g.granularity || "",
 			}));
+			// Reports saved before the cascade-remove fix can carry child-table
+			// related sources that have no remaining references (parent join
+			// was deleted but the child stuck around). Without pruning here
+			// they reappear as ghost entries in the join dialog's source
+			// dropdown — that's what produced the "c_base_items + c_base_items_2"
+			// duplicates users were seeing on re-add.
+			this._pruneOrphanChildSources();
 			this._renderRelatedList();
 			this._renderCalcList();
 			this._renderPalette();
