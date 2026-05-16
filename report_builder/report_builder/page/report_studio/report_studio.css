@@ -229,16 +229,18 @@
 	grid-template-areas:
 		"columns"
 		"filters"
-		"groupby";
+		"groupby"
+		"sort";
 	gap: 14px;
 }
 
 .rs-bucket[data-bucket="columns"] { grid-area: columns; }
 .rs-bucket[data-bucket="filters"] { grid-area: filters; }
 .rs-bucket[data-bucket="groupBy"] { grid-area: groupby; }
+.rs-bucket[data-bucket="sort"] { grid-area: sort; }
 
-/* Columns is the primary bucket — give it the extra real estate the Sort
-   bucket vacated, so reports with many fields don't feel cramped. */
+/* Columns is the primary bucket — give it extra real estate so reports with
+   many fields don't feel cramped. */
 .rs-bucket-columns {
 	min-height: 280px;
 }
@@ -252,7 +254,8 @@
 		grid-template-areas:
 			"columns"
 			"filters"
-			"groupby";
+			"groupby"
+			"sort";
 	}
 }
 
@@ -274,6 +277,7 @@
 .rs-bucket[data-bucket="columns"]   { border-top-color: var(--rs-indigo); }
 .rs-bucket[data-bucket="filters"]   { border-top-color: var(--rs-amber); }
 .rs-bucket[data-bucket="groupBy"]   { border-top-color: var(--rs-emerald); }
+.rs-bucket[data-bucket="sort"]      { border-top-color: var(--rs-slate); }
 
 .rs-bucket-title {
 	font-size: 13px;
@@ -294,6 +298,7 @@
 .rs-bucket[data-bucket="columns"] .rs-bucket-title::before  { background: var(--rs-indigo); }
 .rs-bucket[data-bucket="filters"] .rs-bucket-title::before  { background: var(--rs-amber); }
 .rs-bucket[data-bucket="groupBy"] .rs-bucket-title::before  { background: var(--rs-emerald); }
+.rs-bucket[data-bucket="sort"] .rs-bucket-title::before     { background: var(--rs-slate); }
 
 .rs-bucket-help {
 	font-size: 11px;

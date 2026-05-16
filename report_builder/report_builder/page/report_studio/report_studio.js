@@ -203,6 +203,7 @@ class ReportStudio {
 			columns: [],
 			filters: [],
 			groupBy: [],
+			sort: [],
 			sharedRoles: [],
 			page: 1,
 			isPublished: false,
@@ -284,6 +285,11 @@ class ReportStudio {
 								<div class="rs-bucket-help">${__("Drag a field to group rows.")}</div>
 								<div class="rs-bucket-rows"></div>
 							</div>
+							<div class="rs-bucket" data-bucket="sort">
+								<div class="rs-bucket-title">${__("Sort By")}</div>
+								<div class="rs-bucket-help">${__("Drag one field to order rows.")}</div>
+								<div class="rs-bucket-rows"></div>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -324,6 +330,7 @@ class ReportStudio {
 			columns: $body.find('.rs-bucket[data-bucket="columns"] .rs-bucket-rows'),
 			filters: $body.find('.rs-bucket[data-bucket="filters"] .rs-bucket-rows'),
 			groupBy: $body.find('.rs-bucket[data-bucket="groupBy"] .rs-bucket-rows'),
+			sort: $body.find('.rs-bucket[data-bucket="sort"] .rs-bucket-rows'),
 		};
 		this.$preview = $body.find(".rs-preview");
 		this.$previewBtn = $body.find(".rs-preview-btn");
@@ -440,6 +447,7 @@ class ReportStudio {
 			this.state.columns = [];
 			this.state.filters = [];
 			this.state.groupBy = [];
+			this.state.sort = [];
 			this._renderAllBuckets();
 			this._clearPreview();
 		}
@@ -808,6 +816,7 @@ class ReportStudio {
 			columns: (data) => this._addColumn(data),
 			filters: (data) => this._addFilter(data),
 			groupBy: (data) => this._addGroupBy(data),
+			sort: (data) => this._addSort(data),
 		};
 
 		Object.entries(this.$buckets).forEach(([key, $bucket]) => {
@@ -881,6 +890,16 @@ class ReportStudio {
 
 	_addColumn(data) {
 		const source = data.source || "";
+		const exists = this.state.columns.some(
+			(c) => !c.calculation_alias && (c.source || "") === source && c.field_path === data.path
+		);
+		if (exists) {
+			frappe.show_alert({
+				message: __("{0} is already in Columns.", [data.label || data.path]),
+				indicator: "orange",
+			});
+			return;
+		}
 		this.state.columns.push({
 			source,
 			field_path: data.path,
@@ -895,6 +914,13 @@ class ReportStudio {
 	_addCalcColumn(alias) {
 		const calc = (this.state.calculations || []).find((c) => c.alias === alias);
 		if (!calc) return;
+		if (this.state.columns.some((c) => c.calculation_alias === alias)) {
+			frappe.show_alert({
+				message: __("{0} is already in Columns.", [calc.label || alias]),
+				indicator: "orange",
+			});
+			return;
+		}
 		this.state.columns.push({
 			source: "",
 			field_path: null,
@@ -907,6 +933,17 @@ class ReportStudio {
 	}
 
 	_addFilter(data) {
+		const source = data.source || "";
+		const exists = this.state.filters.some(
+			(f) => (f.source || "") === source && f.field_path === data.path
+		);
+		if (exists) {
+			frappe.show_alert({
+				message: __("{0} is already in Filters.", [data.label || data.path]),
+				indicator: "orange",
+			});
+			return;
+		}
 		const ops = operatorsFor(data.fieldtype);
 		this.state.filters.push({
 			source: data.source || "",
@@ -925,6 +962,16 @@ class ReportStudio {
 
 	_addGroupBy(data) {
 		const source = data.source || "";
+		const exists = this.state.groupBy.some(
+			(g) => (g.source || "") === source && g.field_path === data.path
+		);
+		if (exists) {
+			frappe.show_alert({
+				message: __("{0} is already in Group Data By.", [data.label || data.path]),
+				indicator: "orange",
+			});
+			return;
+		}
 		this.state.groupBy.push({
 			source,
 			field_path: data.path,
@@ -947,8 +994,28 @@ class ReportStudio {
 		this._renderBucket("columns");
 	}
 
+	_addSort(data) {
+		// Sort By accepts a single field. If one is already present, reject the
+		// drop and tell the user to remove it first.
+		if ((this.state.sort || []).length >= 1) {
+			frappe.show_alert({
+				message: __("Sort By takes one field — remove the current one first."),
+				indicator: "orange",
+			});
+			return;
+		}
+		this.state.sort.push({
+			source: data.source || "",
+			field_path: data.path,
+			fieldtype: data.fieldtype,
+			direction: "Ascending",
+			_meta: { label: data.label },
+		});
+		this._renderBucket("sort");
+	}
+
 	_renderAllBuckets() {
-		["columns", "filters", "groupBy"].forEach((b) => this._renderBucket(b));
+		["columns", "filters", "groupBy", "sort"].forEach((b) => this._renderBucket(b));
 	}
 
 	_renderBucket(bucket) {
@@ -979,6 +1046,7 @@ class ReportStudio {
 			if (bucket === "columns") this._renderColumnRow($row, item, idx);
 			else if (bucket === "filters") this._renderFilterRow($row, item, idx);
 			else if (bucket === "groupBy") this._renderGroupRow($row, item, idx);
+			else if (bucket === "sort") this._renderSortRow($row, item, idx);
 		});
 	}
 
@@ -1357,6 +1425,39 @@ class ReportStudio {
 			}
 			this._renderBucket("groupBy");
 			this._renderBucket("columns");
+		});
+	}
+
+	_renderSortRow($row, item, idx) {
+		const source = item.source || "";
+		const meta = this.fieldsByPath.get(this._fieldKey(source, item.field_path)) || {};
+		const label = meta.label || item._meta?.label || item.field_path;
+		// A loaded report's sort rows carry no fieldtype (the backend sort
+		// model doesn't store one). Backfill from field meta so dragging the
+		// row into another bucket still reconstructs the field correctly.
+		if (!item.fieldtype && meta.fieldtype) item.fieldtype = meta.fieldtype;
+		$row.attr("data-fieldtype", item.fieldtype || "");
+		const sourceBadge = source
+			? `<span class="rs-row-badge rs-badge-source">${frappe.utils.escape_html(source)}</span>`
+			: "";
+		$row.html(`
+			<div class="rs-row-main">
+				<div class="rs-row-label">${sourceBadge}${frappe.utils.escape_html(label)}</div>
+				<div class="rs-sort-direction"></div>
+				<button class="btn btn-default btn-xs rs-row-remove" title="${__("Remove")}" aria-label="${__("Remove")}">&times;</button>
+			</div>
+		`);
+		const ctrl = makeControl({
+			fieldtype: "Select",
+			options: ["Ascending", "Descending"].join("\n"),
+			value: item.direction || "Ascending",
+			parent: $row.find(".rs-sort-direction")[0],
+			label: __("Direction"),
+		});
+		ctrl.$input?.on("change", () => { item.direction = ctrl.get_value() || "Ascending"; });
+		$row.find(".rs-row-remove").on("click", () => {
+			this.state.sort.splice(idx, 1);
+			this._renderBucket("sort");
 		});
 	}
 
@@ -2776,7 +2877,11 @@ class ReportStudio {
 				fieldtype: g.fieldtype,
 				granularity: g.granularity || "",
 			})),
-			sort: [],
+			sort: (this.state.sort || []).map((s) => ({
+				source: s.source || "",
+				field_path: s.field_path,
+				direction: s.direction || "Ascending",
+			})),
 		};
 	}
 
@@ -3136,13 +3241,12 @@ class ReportStudio {
 				fieldtype: g.fieldtype,
 				granularity: g.granularity || "",
 			}));
-			// Reports saved before the cascade-remove fix can carry child-table
-			// related sources that have no remaining references (parent join
-			// was deleted but the child stuck around). Without pruning here
-			// they reappear as ghost entries in the join dialog's source
-			// dropdown — that's what produced the "c_base_items + c_base_items_2"
-			// duplicates users were seeing on re-add.
-			this._pruneOrphanChildSources();
+			this.state.sort = (data.config.sort || []).map((s) => ({
+				source: s.source || "",
+				field_path: s.field_path,
+				fieldtype: s.fieldtype,
+				direction: s.direction || "Ascending",
+			}));
 			this._renderRelatedList();
 			this._renderCalcList();
 			this._renderPalette();
