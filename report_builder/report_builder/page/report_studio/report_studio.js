@@ -203,6 +203,7 @@ class ReportStudio {
 			columns: [],
 			filters: [],
 			groupBy: [],
+			sort: [],
 			sharedRoles: [],
 			page: 1,
 			isPublished: false,
@@ -284,6 +285,11 @@ class ReportStudio {
 								<div class="rs-bucket-help">${__("Drag a field to group rows.")}</div>
 								<div class="rs-bucket-rows"></div>
 							</div>
+							<div class="rs-bucket" data-bucket="sort">
+								<div class="rs-bucket-title">${__("Sort By")}</div>
+								<div class="rs-bucket-help">${__("Drag one field to order rows.")}</div>
+								<div class="rs-bucket-rows"></div>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -324,6 +330,7 @@ class ReportStudio {
 			columns: $body.find('.rs-bucket[data-bucket="columns"] .rs-bucket-rows'),
 			filters: $body.find('.rs-bucket[data-bucket="filters"] .rs-bucket-rows'),
 			groupBy: $body.find('.rs-bucket[data-bucket="groupBy"] .rs-bucket-rows'),
+			sort: $body.find('.rs-bucket[data-bucket="sort"] .rs-bucket-rows'),
 		};
 		this.$preview = $body.find(".rs-preview");
 		this.$previewBtn = $body.find(".rs-preview-btn");
@@ -440,6 +447,7 @@ class ReportStudio {
 			this.state.columns = [];
 			this.state.filters = [];
 			this.state.groupBy = [];
+			this.state.sort = [];
 			this._renderAllBuckets();
 			this._clearPreview();
 		}
@@ -808,6 +816,7 @@ class ReportStudio {
 			columns: (data) => this._addColumn(data),
 			filters: (data) => this._addFilter(data),
 			groupBy: (data) => this._addGroupBy(data),
+			sort: (data) => this._addSort(data),
 		};
 
 		Object.entries(this.$buckets).forEach(([key, $bucket]) => {
@@ -881,6 +890,16 @@ class ReportStudio {
 
 	_addColumn(data) {
 		const source = data.source || "";
+		const exists = this.state.columns.some(
+			(c) => !c.calculation_alias && (c.source || "") === source && c.field_path === data.path
+		);
+		if (exists) {
+			frappe.show_alert({
+				message: __("{0} is already in Columns.", [data.label || data.path]),
+				indicator: "orange",
+			});
+			return;
+		}
 		this.state.columns.push({
 			source,
 			field_path: data.path,
@@ -895,6 +914,13 @@ class ReportStudio {
 	_addCalcColumn(alias) {
 		const calc = (this.state.calculations || []).find((c) => c.alias === alias);
 		if (!calc) return;
+		if (this.state.columns.some((c) => c.calculation_alias === alias)) {
+			frappe.show_alert({
+				message: __("{0} is already in Columns.", [calc.label || alias]),
+				indicator: "orange",
+			});
+			return;
+		}
 		this.state.columns.push({
 			source: "",
 			field_path: null,
@@ -907,6 +933,17 @@ class ReportStudio {
 	}
 
 	_addFilter(data) {
+		const source = data.source || "";
+		const exists = this.state.filters.some(
+			(f) => (f.source || "") === source && f.field_path === data.path
+		);
+		if (exists) {
+			frappe.show_alert({
+				message: __("{0} is already in Filters.", [data.label || data.path]),
+				indicator: "orange",
+			});
+			return;
+		}
 		const ops = operatorsFor(data.fieldtype);
 		this.state.filters.push({
 			source: data.source || "",
@@ -925,6 +962,16 @@ class ReportStudio {
 
 	_addGroupBy(data) {
 		const source = data.source || "";
+		const exists = this.state.groupBy.some(
+			(g) => (g.source || "") === source && g.field_path === data.path
+		);
+		if (exists) {
+			frappe.show_alert({
+				message: __("{0} is already in Group Data By.", [data.label || data.path]),
+				indicator: "orange",
+			});
+			return;
+		}
 		this.state.groupBy.push({
 			source,
 			field_path: data.path,
@@ -947,8 +994,28 @@ class ReportStudio {
 		this._renderBucket("columns");
 	}
 
+	_addSort(data) {
+		// Sort By accepts a single field. If one is already present, reject the
+		// drop and tell the user to remove it first.
+		if ((this.state.sort || []).length >= 1) {
+			frappe.show_alert({
+				message: __("Sort By takes one field — remove the current one first."),
+				indicator: "orange",
+			});
+			return;
+		}
+		this.state.sort.push({
+			source: data.source || "",
+			field_path: data.path,
+			fieldtype: data.fieldtype,
+			direction: "Ascending",
+			_meta: { label: data.label },
+		});
+		this._renderBucket("sort");
+	}
+
 	_renderAllBuckets() {
-		["columns", "filters", "groupBy"].forEach((b) => this._renderBucket(b));
+		["columns", "filters", "groupBy", "sort"].forEach((b) => this._renderBucket(b));
 	}
 
 	_renderBucket(bucket) {
@@ -979,6 +1046,7 @@ class ReportStudio {
 			if (bucket === "columns") this._renderColumnRow($row, item, idx);
 			else if (bucket === "filters") this._renderFilterRow($row, item, idx);
 			else if (bucket === "groupBy") this._renderGroupRow($row, item, idx);
+			else if (bucket === "sort") this._renderSortRow($row, item, idx);
 		});
 	}
 
@@ -1357,6 +1425,39 @@ class ReportStudio {
 			}
 			this._renderBucket("groupBy");
 			this._renderBucket("columns");
+		});
+	}
+
+	_renderSortRow($row, item, idx) {
+		const source = item.source || "";
+		const meta = this.fieldsByPath.get(this._fieldKey(source, item.field_path)) || {};
+		const label = meta.label || item._meta?.label || item.field_path;
+		// A loaded report's sort rows carry no fieldtype (the backend sort
+		// model doesn't store one). Backfill from field meta so dragging the
+		// row into another bucket still reconstructs the field correctly.
+		if (!item.fieldtype && meta.fieldtype) item.fieldtype = meta.fieldtype;
+		$row.attr("data-fieldtype", item.fieldtype || "");
+		const sourceBadge = source
+			? `<span class="rs-row-badge rs-badge-source">${frappe.utils.escape_html(source)}</span>`
+			: "";
+		$row.html(`
+			<div class="rs-row-main">
+				<div class="rs-row-label">${sourceBadge}${frappe.utils.escape_html(label)}</div>
+				<div class="rs-sort-direction"></div>
+				<button class="btn btn-default btn-xs rs-row-remove" title="${__("Remove")}" aria-label="${__("Remove")}">&times;</button>
+			</div>
+		`);
+		const ctrl = makeControl({
+			fieldtype: "Select",
+			options: ["Ascending", "Descending"].join("\n"),
+			value: item.direction || "Ascending",
+			parent: $row.find(".rs-sort-direction")[0],
+			label: __("Direction"),
+		});
+		ctrl.$input?.on("change", () => { item.direction = ctrl.get_value() || "Ascending"; });
+		$row.find(".rs-row-remove").on("click", () => {
+			this.state.sort.splice(idx, 1);
+			this._renderBucket("sort");
 		});
 	}
 
@@ -2050,6 +2151,36 @@ class ReportStudio {
 					$row.find(".rs-child-label").text(`${ct.label} (${ct.child_doctype})`);
 					const $cb = $row.find(".rs-child-cb");
 					const existing = arr.find((p) => p.parent_alias === sec.ownerAlias && p.parent_field === ct.fieldname);
+					// Look for an already-committed child join (in state, not in
+					// this dialog's pending list and not in initialChildAliases
+					// which the edit flow uses to track pending re-inserts).
+					// Without this guard a user re-ticking a child that's already
+					// joined produced a duplicate alias (c_base_items_2) and the
+					// engine emitted two LEFT JOINs on the same child table —
+					// MR rows then cross-multiplied (1 row × all rows).
+					let lockedCommitted = null;
+					if (!existing && sec.side === "base") {
+						lockedCommitted = this.state.relatedSources.find((r) => {
+							if (!r.is_child_table) return false;
+							if ((r.child_parent_field || "") !== ct.fieldname) return false;
+							if (initialChildAliases.has(r.alias)) return false;
+							const parentAlias = r.conditions?.[0]?.left_source ?? "";
+							return parentAlias === (sec.ownerAlias || "");
+						});
+					}
+					if (lockedCommitted) {
+						$cb.prop("checked", true);
+						$cb.prop("disabled", true);
+						$row.css("opacity", "0.65");
+						$row.attr(
+							"title",
+							__("Already joined as {0}. Remove that join first to re-add it.", [
+								lockedCommitted.alias,
+							])
+						);
+						$host.append($row);
+						return;
+					}
 					$cb.prop("checked", !!existing);
 					$cb.on("change", async () => {
 						if ($cb.is(":checked")) {
@@ -2155,16 +2286,112 @@ class ReportStudio {
 		return fields;
 	}
 
+	_pruneOrphanChildSources() {
+		// Walk this.state.relatedSources and drop any is_child_table row that
+		// nothing references — i.e. no column / filter / groupBy / sort uses
+		// it as `source`, AND no other related source uses it as `left_source`
+		// in a join condition. Called from _loadReport so stale saves don't
+		// keep showing ghost child sources in the join dialog dropdowns.
+		const isReferenced = (alias) => {
+			const inRow = (r) => (r.source || "") === alias;
+			if ((this.state.columns || []).some(inRow)) return true;
+			if ((this.state.filters || []).some(inRow)) return true;
+			if ((this.state.groupBy || []).some(inRow)) return true;
+			if ((this.state.sort || []).some(inRow)) return true;
+			for (const other of this.state.relatedSources) {
+				if (other.alias === alias) continue;
+				for (const c of other.conditions || []) {
+					if ((c.left_source || "") === alias) return true;
+				}
+			}
+			return false;
+		};
+
+		// Repeat until stable: removing one orphan can orphan another (a
+		// child whose only reference was another orphan).
+		while (true) {
+			const orphans = this.state.relatedSources
+				.filter((r) => r.is_child_table && !isReferenced(r.alias))
+				.map((r) => r.alias);
+			if (!orphans.length) break;
+			const orphanSet = new Set(orphans);
+			this.state.relatedSources = this.state.relatedSources.filter(
+				(r) => !orphanSet.has(r.alias)
+			);
+			orphans.forEach((a) => this._dropSource(a));
+		}
+	}
+
 	_removeRelatedSource(idx) {
 		const rs = this.state.relatedSources[idx];
 		if (!rs) return;
-		this.state.relatedSources.splice(idx, 1);
-		// purge any rows referencing this source
-		const filterFn = (r) => (r.source || "") !== rs.alias;
-		this.state.columns = this.state.columns.filter(filterFn);
-		this.state.filters = this.state.filters.filter(filterFn);
-		this.state.groupBy = this.state.groupBy.filter(filterFn);
-		this._dropSource(rs.alias);
+
+		// Cascade: child-table sources are materialized as their own related
+		// sources but hidden from the join list (see _renderRelatedList).
+		// Without this cascade they survive the splice as orphans and reappear
+		// next time the report is opened — that's the "2 child docs still
+		// there" bug.
+		//
+		// We remove two cohorts of child-tables:
+		//   1. Related-side children — those whose first condition's
+		//      left_source IS this rs.alias (clearly owned by this join).
+		//   2. Orphaned base-side children — those that, after dropping rs,
+		//      have no remaining references in columns/filters/groupBy/sort.
+		//      Base children added solely to support this join's match
+		//      conditions fall into this bucket; ones the user uses elsewhere
+		//      are preserved.
+		const removedAliases = new Set([rs.alias]);
+
+		for (const other of this.state.relatedSources) {
+			if (!other.is_child_table) continue;
+			if (other.alias === rs.alias) continue;
+			const leftSource = other.conditions?.[0]?.left_source || "";
+			if (leftSource === rs.alias) removedAliases.add(other.alias);
+		}
+
+		// Drop everything in `removedAliases` from the related sources, then
+		// scan for now-orphaned base-side children.
+		this.state.relatedSources = this.state.relatedSources.filter(
+			(r) => !removedAliases.has(r.alias)
+		);
+
+		const stillReferenced = (alias) => {
+			const inRow = (r) => (r.source || "") === alias;
+			if (this.state.columns.some(inRow)) return true;
+			if (this.state.filters.some(inRow)) return true;
+			if (this.state.groupBy.some(inRow)) return true;
+			if ((this.state.sort || []).some(inRow)) return true;
+			// Other related sources may reference this child via their join
+			// conditions (left_source). Keep it if any do.
+			for (const other of this.state.relatedSources) {
+				for (const c of other.conditions || []) {
+					if ((c.left_source || "") === alias) return true;
+				}
+			}
+			return false;
+		};
+
+		const orphans = this.state.relatedSources
+			.filter((r) => r.is_child_table && !stillReferenced(r.alias))
+			.map((r) => r.alias);
+		if (orphans.length) {
+			const orphanSet = new Set(orphans);
+			this.state.relatedSources = this.state.relatedSources.filter(
+				(r) => !orphanSet.has(r.alias)
+			);
+			orphans.forEach((a) => removedAliases.add(a));
+		}
+
+		// Purge any column/filter/groupBy/sort rows that referenced anything
+		// we just removed.
+		const keepRow = (r) => !removedAliases.has(r.source || "");
+		this.state.columns = this.state.columns.filter(keepRow);
+		this.state.filters = this.state.filters.filter(keepRow);
+		this.state.groupBy = this.state.groupBy.filter(keepRow);
+		if (this.state.sort) this.state.sort = this.state.sort.filter(keepRow);
+
+		removedAliases.forEach((alias) => this._dropSource(alias));
+
 		this._renderRelatedList();
 		this._renderPalette();
 		this._renderAllBuckets();
@@ -2650,7 +2877,11 @@ class ReportStudio {
 				fieldtype: g.fieldtype,
 				granularity: g.granularity || "",
 			})),
-			sort: [],
+			sort: (this.state.sort || []).map((s) => ({
+				source: s.source || "",
+				field_path: s.field_path,
+				direction: s.direction || "Ascending",
+			})),
 		};
 	}
 
@@ -2788,6 +3019,12 @@ class ReportStudio {
 			console.log("[ReportStudio] save aborted: empty title");
 			return;
 		}
+
+		// Belt-and-suspenders: prune any orphan child sources right before
+		// serialising. _removeRelatedSource already cascades and _loadReport
+		// already cleans on open, but this guarantees the persisted shape is
+		// minimal regardless of how state was mutated this session.
+		this._pruneOrphanChildSources();
 
 		let configJson;
 		try {
@@ -3003,6 +3240,12 @@ class ReportStudio {
 				field_path: g.field_path,
 				fieldtype: g.fieldtype,
 				granularity: g.granularity || "",
+			}));
+			this.state.sort = (data.config.sort || []).map((s) => ({
+				source: s.source || "",
+				field_path: s.field_path,
+				fieldtype: s.fieldtype,
+				direction: s.direction || "Ascending",
 			}));
 			this._renderRelatedList();
 			this._renderCalcList();

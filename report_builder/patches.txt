@@ -7,3 +7,4 @@ report_builder.patches.v1_2.drop_report_studio_chart
 # Patches added in this section will be executed after doctypes are migrated
 report_builder.patches.v1_0.publish_existing_studio_reports
 report_builder.patches.v1_1.republish_with_inline_runner
+report_builder.patches.v1_3.demote_standard_reports
