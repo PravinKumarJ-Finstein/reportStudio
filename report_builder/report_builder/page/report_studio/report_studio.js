@@ -844,6 +844,25 @@ class ReportStudio {
 					document.body.classList.remove("rs-dragging");
 					stopGhostFollow();
 				},
+				onUpdate: (evt) => {
+					// In-bucket drag reorder: rebuild the state array to match
+					// the new row order. Each row still carries its original
+					// data-idx, so the new DOM order is a permutation of the
+					// old indexes — apply it so the preview table (and saved
+					// report) render columns in exactly this order.
+					const order = [];
+					$(evt.to)
+						.children(".rs-bucket-row")
+						.each((_, el) => {
+							const i = parseInt(el.dataset.idx, 10);
+							if (!Number.isNaN(i)) order.push(i);
+						});
+					const items = this.state[key];
+					if (order.length === items.length) {
+						this.state[key] = order.map((i) => items[i]);
+					}
+					this._renderBucket(key);
+				},
 				onAdd: (evt) => {
 					const item = evt.item;
 					const fromSameBucket = evt.from === evt.to;
@@ -1694,6 +1713,12 @@ class ReportStudio {
 		const pendingChildMatch = {};
 		const allPendingChildJoins = () => [...pendingBaseChildJoins, ...pendingRelatedChildJoins];
 
+		// The "Base Doc" picker in the child-table section also chooses the
+		// FROM side of this join: Match Conditions resolve their left field
+		// against whichever owner is selected there ("" = report base, or a
+		// prior related source's alias). renderChildSection keeps this in sync.
+		let selectedBaseOwner = "";
+
 		// On edit, restore the previously-committed child joins for this RS
 		// so the dialog shows ticked checkboxes, populated condition rows,
 		// and the same child-match conditions the user set last time.
@@ -1735,6 +1760,23 @@ class ReportStudio {
 			});
 		}
 
+		// On edit, recover the FROM owner from the saved conditions so the
+		// "Base Doc" selector and Match Conditions reopen on the right doc:
+		// it's the report base, a prior related source, or a child join's parent.
+		if (editing && (initial.conditions || []).length) {
+			const ls = initial.conditions[0].left_source || "";
+			if (ls) {
+				const pend = pendingBaseChildJoins.find((p) => p.alias === ls);
+				if (pend) {
+					selectedBaseOwner = pend.parent_alias || "";
+				} else {
+					const src = this.state.relatedSources.find((r) => r.alias === ls);
+					selectedBaseOwner =
+						src && src.is_child_table ? src.conditions?.[0]?.left_source || "" : ls;
+				}
+			}
+		}
+
 		const sanitizeAlias = (s) => `c_${(s || "base").replace(/[^A-Za-z0-9_]/g, "_")}`;
 		const ensureUniqueAlias = (proposed) => {
 			const taken = new Set([
@@ -1767,60 +1809,56 @@ class ReportStudio {
 
 		const renderConds = async () => {
 			$cond.empty();
-			// Collect ticked/committed child-table fieldnames so we can reveal
-			// only the child fields the user has actually opted into.
-			const checkedBaseChildFields = new Set();
-			this.state.relatedSources.forEach((other, idx) => {
-				if (editIdx != null && idx >= editIdx) return;
-				if (!other.is_child_table) return;
-				if (initialChildAliases.has(other.alias)) return;
-				const parentAlias = (other.conditions || [])[0]?.left_source ?? "";
-				if (parentAlias !== "") return;
-				if (other.child_parent_field) checkedBaseChildFields.add(other.child_parent_field);
-			});
-			pendingBaseChildJoins.forEach((p) => {
-				if ((p.parent_alias || "") !== "") return;
-				if (p.parent_field) checkedBaseChildFields.add(p.parent_field);
-			});
-			const checkedRelatedChildFields = new Set();
-			pendingRelatedChildJoins.forEach((p) => {
-				if (p.parent_field) checkedRelatedChildFields.add(p.parent_field);
-			});
-			const filterByCheckedChildren = (fields, allowed) => (fields || []).filter((f) => {
-				if (!f.requires_child_join) return true;
-				return allowed.has(f.child_parent_field);
-			});
-			const baseFields = filterByCheckedChildren(
-				this._flattenFields(await this._cachedFields("", this.state.baseDoctype)),
-				checkedBaseChildFields
+			// A match condition may target ANY field on the base or the joined
+			// DocType — including their child-table fields (e.g. items.qty).
+			// The engine resolves child-table paths inside a join condition on
+			// its own, so unlike the Columns picker these are NOT gated behind
+			// ticking the child table in "Join via Child Tables": the field
+			// list is driven purely by the chosen base / joined DocType.
+			const baseFields = this._flattenFields(
+				await this._cachedFields("", this.state.baseDoctype)
 			);
 			const rightDoctype = d.get_value("related_doctype");
 			const rightFields = rightDoctype
-				? filterByCheckedChildren(
-					this._flattenFields(await this._cachedFields(`__rs:${initial.alias || "new"}`, rightDoctype)),
-					checkedRelatedChildFields
+				? this._flattenFields(
+					await this._cachedFields(`__rs:${initial.alias || "new"}`, rightDoctype)
 				)
 				: [];
+			// The left side of a match condition is the FROM doc — whichever
+			// owner is picked in the "Base Doc" selector — plus the child
+			// tables ticked under that owner. Nothing else is offered.
+			const ownerAlias = selectedBaseOwner || "";
+			const ownerSource = ownerAlias
+				? this.state.relatedSources.find((r) => r.alias === ownerAlias)
+				: null;
+			const ownerLabel = ownerAlias
+				? `${ownerAlias} (${ownerSource ? ownerSource.related_doctype : ownerAlias})`
+				: this.state.baseDoctype || __("Base");
 			const $tbl = $(`<div class="rs-cond-table"></div>`);
 			$cond.append($tbl);
 			(initial.conditions || []).forEach((cond, ci) => {
-				// Left-side source dropdown: only the base doctype plus its
-				// child-table joins (committed or pending in this dialog).
-				// Other related sources are intentionally excluded — joins go
-				// from the base/base-child to the related doctype being added.
-				const sourceOptions = [{ label: this.state.baseDoctype || __("Base"), value: "" }];
+				// Left-side source dropdown: the selected "Base Doc" owner and
+				// the child-table joins ticked under it (committed or pending).
+				const sourceOptions = [{ label: ownerLabel, value: ownerAlias }];
 				this.state.relatedSources.forEach((other, idx) => {
 					if (editIdx != null && idx >= editIdx) return;
 					if (!other.is_child_table) return;
 					if (initialChildAliases.has(other.alias)) return;
 					const parentAlias = (other.conditions || [])[0]?.left_source ?? "";
-					if (parentAlias !== "") return;
+					if (parentAlias !== ownerAlias) return;
 					sourceOptions.push({ label: `${other.alias} (${other.related_doctype}) [child]`, value: other.alias });
 				});
 				pendingBaseChildJoins.forEach((p) => {
-					if ((p.parent_alias || "") !== "") return;
+					if ((p.parent_alias || "") !== ownerAlias) return;
 					sourceOptions.push({ label: `${p.alias} (${p.child_doctype}) [child]`, value: p.alias });
 				});
+				// Switching the owner invalidates a stale left_source — snap it
+				// back to the owner so the picker and the data agree.
+				const validValues = new Set(sourceOptions.map((o) => o.value));
+				if (!validValues.has(cond.left_source || "")) {
+					cond.left_source = ownerAlias;
+					cond.left_path = "";
+				}
 				const $r = $(`
 					<div class="rs-cond-row">
 						<select class="form-control rs-cond-left-source" style="max-width:200px;flex:0 0 200px"></select>
@@ -1941,26 +1979,35 @@ class ReportStudio {
 				`<div class="text-muted small" style="margin-bottom:8px">${__("How should child rows pair up? Required for each ticked related-side child.")}</div>`
 			);
 
-			// Build the left-source options once: base + base-side child aliases.
-			const leftSourceOptions = [{ label: this.state.baseDoctype || __("Base"), value: "" }];
+			// Build the left-source options once: the selected "Base Doc"
+			// owner and the child-table joins ticked under it.
+			const cmOwnerAlias = selectedBaseOwner || "";
+			const cmOwnerSource = cmOwnerAlias
+				? this.state.relatedSources.find((r) => r.alias === cmOwnerAlias)
+				: null;
+			const cmOwnerLabel = cmOwnerAlias
+				? `${cmOwnerAlias} (${cmOwnerSource ? cmOwnerSource.related_doctype : cmOwnerAlias})`
+				: this.state.baseDoctype || __("Base");
+			const leftSourceOptions = [{ label: cmOwnerLabel, value: cmOwnerAlias }];
 			this.state.relatedSources.forEach((other, idx) => {
 				if (editIdx != null && idx >= editIdx) return;
 				if (!other.is_child_table) return;
 				if (initialChildAliases.has(other.alias)) return;
 				const parentAlias = (other.conditions || [])[0]?.left_source ?? "";
-				if (parentAlias !== "") return;
+				if (parentAlias !== cmOwnerAlias) return;
 				leftSourceOptions.push({
 					label: `${other.alias} (${other.related_doctype}) [child]`,
 					value: other.alias,
 				});
 			});
 			pendingBaseChildJoins.forEach((p) => {
-				if ((p.parent_alias || "") !== "") return;
+				if ((p.parent_alias || "") !== cmOwnerAlias) return;
 				leftSourceOptions.push({
 					label: `${p.alias} (${p.child_doctype}) [child]`,
 					value: p.alias,
 				});
 			});
+			const cmValidLeft = new Set(leftSourceOptions.map((o) => o.value));
 
 			const baseDoctypeFields = this._flattenFields(
 				await this._cachedFields("", this.state.baseDoctype)
@@ -2005,6 +2052,11 @@ class ReportStudio {
 							`<option value="${frappe.utils.escape_html(o.value)}">${frappe.utils.escape_html(o.label)}</option>`
 						)
 					);
+					// Switching the owner invalidates a stale left_source.
+					if (!cmValidLeft.has(mc.left_source || "")) {
+						mc.left_source = cmOwnerAlias;
+						mc.left_path = "";
+					}
 					$ls.val(mc.left_source || "");
 
 					const lfCtl = frappe.ui.form.make_control({
@@ -2093,31 +2145,30 @@ class ReportStudio {
 		const renderChildSection = async () => {
 			const myToken = ++childRenderToken;
 			const baseSections = [];
+			// Owners the join can start FROM — listed even with no child
+			// tables, since the "Base Doc" selector built from this list also
+			// drives the Match Conditions left source.
 			if (this.state.baseDoctype) {
 				const baseChildren = await RB_API.getChildTables(this.state.baseDoctype);
 				if (myToken !== childRenderToken) return;
-				if (baseChildren.length) {
-					baseSections.push({
-						ownerAlias: "",
-						ownerLabel: `${this.state.baseDoctype} (${__("base")})`,
-						children: baseChildren,
-						side: "base",
-					});
-				}
+				baseSections.push({
+					ownerAlias: "",
+					ownerLabel: `${this.state.baseDoctype} (${__("base")})`,
+					children: baseChildren,
+					side: "base",
+				});
 			}
 			for (const [idx, other] of this.state.relatedSources.entries()) {
 				if (editIdx != null && idx >= editIdx) continue;
 				if (other.is_child_table) continue; // already a child join itself
 				const cs = await RB_API.getChildTables(other.related_doctype);
 				if (myToken !== childRenderToken) return;
-				if (cs.length) {
-					baseSections.push({
-						ownerAlias: other.alias,
-						ownerLabel: `${other.alias} (${other.related_doctype})`,
-						children: cs,
-						side: "base",
-					});
-				}
+				baseSections.push({
+					ownerAlias: other.alias,
+					ownerLabel: `${other.alias} (${other.related_doctype})`,
+					children: cs,
+					side: "base",
+				});
 			}
 			const rightDt = d.get_value("related_doctype");
 			let relatedSection = null;
@@ -2146,6 +2197,10 @@ class ReportStudio {
 			const renderChecks = ($host, sec) => {
 				$host.empty();
 				const arr = sec.side === "base" ? pendingBaseChildJoins : pendingRelatedChildJoins;
+				if (!sec.children.length) {
+					$host.append(`<div class="text-muted small">${__("No child tables on this doc.")}</div>`);
+					return;
+				}
 				sec.children.forEach((ct) => {
 					const $row = $(`<label class="rs-child-row" style="display:flex; gap:8px; align-items:center; margin:2px 0"><input type="checkbox" class="rs-child-cb" style="margin:0" /><span class="rs-child-label"></span></label>`);
 					$row.find(".rs-child-label").text(`${ct.label} (${ct.child_doctype})`);
@@ -2228,10 +2283,21 @@ class ReportStudio {
 				$baseWrap.append($select);
 				const $checks = $(`<div class="rs-child-base-checks"></div>`);
 				$baseWrap.append($checks);
-				renderChecks($checks, baseSections[0]);
-				$select.on("change", () => {
+				// Keep the FROM-owner selection across re-renders; default to
+				// the report base. Match Conditions follow this selection.
+				let selIdx = baseSections.findIndex((s) => s.ownerAlias === selectedBaseOwner);
+				if (selIdx < 0) selIdx = 0;
+				$select.val(String(selIdx));
+				selectedBaseOwner = baseSections[selIdx].ownerAlias;
+				renderChecks($checks, baseSections[selIdx]);
+				await renderConds();
+				await renderChildMatchSection();
+				$select.on("change", async () => {
 					const idx = parseInt($select.val(), 10) || 0;
+					selectedBaseOwner = baseSections[idx].ownerAlias;
 					renderChecks($checks, baseSections[idx]);
+					await renderConds();
+					await renderChildMatchSection();
 				});
 				$childWrap.append($baseWrap);
 			}
@@ -2887,10 +2953,15 @@ class ReportStudio {
 
 	async _runPreview() {
 		if (!this.state.baseDoctype) {
+			this._clearPreview();
 			frappe.show_alert({ message: __("Please select a DocType."), indicator: "orange" });
 			return;
 		}
 		if (!this.state.columns.length && !this.state.groupBy.length) {
+			// Nothing left to show. Clear any table from an earlier run so the
+			// preview doesn't keep displaying columns the user has removed.
+			this._clearPreview();
+			this.$preview.html(`<div class="text-muted">${__("Add at least one column to preview the report.")}</div>`);
 			frappe.show_alert({ message: __("Add at least one column."), indicator: "orange" });
 			return;
 		}
@@ -2983,6 +3054,14 @@ class ReportStudio {
 
 	_clearPreview() {
 		this.lastResult = null;
+		// Tear down the DataTable instance, not just its DOM, so a stale grid
+		// can't survive an .empty() and reappear.
+		try {
+			this._dataTable?.destroy?.();
+		} catch (e) {
+			console.error(e);
+		}
+		this._dataTable = null;
 		this.$preview.empty();
 		this.$pageInfo.text("");
 	}
@@ -3382,6 +3461,20 @@ class ReportStudio {
 
 frappe.pages["report-studio"].on_page_load = function (wrapper) {
 	frappe.report_studio.controller = new ReportStudio(wrapper);
+
+	// Keep Report Studio dialogs open on an outside (backdrop) click — only
+	// the ×, Esc, or an action button should close them. Bootstrap reads the
+	// backdrop setting live when the backdrop is clicked, so switching it to
+	// "static" once the modal is shown is enough. Scoped to this page via the
+	// route check so dialogs elsewhere in the desk keep their normal behaviour.
+	$(document).on("shown.bs.modal", ".modal", function () {
+		const route = (frappe.get_route && frappe.get_route()) || [];
+		if (route[0] !== "report-studio") return;
+		const inst = $(this).data("bs.modal");
+		if (inst && inst._config) {
+			inst._config.backdrop = "static";
+		}
+	});
 };
 
 frappe.pages["report-studio"].on_page_show = function () {
