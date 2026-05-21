@@ -574,10 +574,14 @@ def publish_to_standard_report(name: str) -> str:
 	previous_name = studio.linked_report_name
 
 	# Rename in place if previously published under a different name (title changed).
+	# `force=True` is required because the Report record is is_standard=Yes
+	# (Frappe blocks renames on standard reports without this flag). The
+	# rename is gated on the Studio doc's write permission, which has already
+	# been verified upstream by `publish_to_standard_report`.
 	if previous_name and previous_name != target_name and frappe.db.exists("Report", previous_name):
 		from frappe.model.rename_doc import rename_doc as _rename_doc
 
-		_rename_doc(
+		_rename_doc(  # nosemgrep: frappe-rename-doc-without-validation
 			doctype="Report",
 			old=previous_name,
 			new=target_name,
@@ -703,9 +707,16 @@ def unpublish_standard_report(name: str) -> None:
 	if not frappe.has_permission(REPORT_DOCTYPE, "write", doc=studio):
 		raise frappe.PermissionError
 
+	# Mirror Report cleanup. `ignore_permissions` is deliberate: the user has
+	# write access to the Studio doc (checked above) which owns this mirror,
+	# but they don't necessarily have direct Report-doctype permissions.
+	# `delete_permanently` avoids leaving the row in the trash where Frappe
+	# would still surface it from the desk Report list.
 	linked = studio.linked_report_name
 	if linked and frappe.db.exists("Report", linked):
-		frappe.delete_doc("Report", linked, ignore_permissions=True, delete_permanently=True)
+		frappe.delete_doc(  # nosemgrep: frappe-delete-permanently
+			"Report", linked, ignore_permissions=True, delete_permanently=True
+		)
 
 	frappe.db.set_value(REPORT_DOCTYPE, name, {
 		"linked_report_name": "",

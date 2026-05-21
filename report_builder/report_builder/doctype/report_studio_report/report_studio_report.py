@@ -43,10 +43,16 @@ class ReportStudioReport(Document):
 			{"share_doctype": "Report Studio Report", "share_name": self.name},
 		)
 		# Cascade: drop the mirrored Frappe Report record if present.
+		# `ignore_permissions` + `delete_permanently` are intentional — this
+		# fires from on_trash() which Frappe only invokes after delete-perm
+		# on the Studio doc has been verified. The mirror is a derived
+		# artifact and is removed unconditionally with the Studio record.
 		linked = self.linked_report_name
 		if linked and frappe.db.exists("Report", linked):
 			try:
-				frappe.delete_doc("Report", linked, ignore_permissions=True, delete_permanently=True)
+				frappe.delete_doc(  # nosemgrep: frappe-delete-permanently
+					"Report", linked, ignore_permissions=True, delete_permanently=True
+				)
 			except Exception:
 				frappe.log_error(
 					title="Report Studio: cascade delete failed",

@@ -33,8 +33,10 @@ def execute():
 		)
 
 	# Drop the chart child table — its data is no longer referenced.
+	# DDL: literal SQL with no user input. Required because Frappe's ORM does
+	# not expose a DROP TABLE primitive.
 	if frappe.db.has_table("tabReport Studio Chart"):
-		frappe.db.sql("DROP TABLE IF EXISTS `tabReport Studio Chart`")
+		frappe.db.sql("DROP TABLE IF EXISTS `tabReport Studio Chart`")  # nosemgrep: frappe-dont-use-frappe-db-sql
 
 	# Delete the DocType record itself (and any leftover meta).
 	if frappe.db.exists("DocType", "Report Studio Chart"):
