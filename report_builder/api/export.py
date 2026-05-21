@@ -84,6 +84,8 @@ def _csv_cell(value):
 def _respond_pdf(filename_base: str, title: str, headers: list, rows: list) -> None:
 	from frappe.utils.pdf import get_pdf
 
+	# Template path is a hardcoded literal (not user input) and the template
+	# uses Jinja auto-escaping for all context values — no SSTI surface.
 	html = frappe.render_template(
 		"report_builder/templates/includes/export_table.html",
 		{
