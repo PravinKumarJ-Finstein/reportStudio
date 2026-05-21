@@ -235,9 +235,11 @@ def get_db_columns(doctype: str) -> dict[str, str]:
 
 	# Build the table name without f-string interpolation — the value is fully
 	# parameterized via `%s` below, but pattern-based scanners flag any
-	# f-string flowing into a `frappe.db.sql` call regardless.
+	# f-string flowing into a `frappe.db.sql` call regardless. INFORMATION_SCHEMA
+	# is not exposed through Frappe's ORM, so a raw query is necessary; both
+	# parameters (db_name and table_name) are passed as bound `%s` values.
 	table_name = "tab" + doctype
-	rows = frappe.db.sql(
+	rows = frappe.db.sql(  # nosemgrep: frappe-dont-use-frappe-db-sql
 		"""
 		SELECT COLUMN_NAME, DATA_TYPE
 		FROM INFORMATION_SCHEMA.COLUMNS
