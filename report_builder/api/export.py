@@ -86,7 +86,7 @@ def _respond_pdf(filename_base: str, title: str, headers: list, rows: list) -> N
 
 	# Template path is a hardcoded literal (not user input) and the template
 	# uses Jinja auto-escaping for all context values — no SSTI surface.
-	html = frappe.render_template(
+	html = frappe.render_template(  # nosemgrep: frappe-ssti
 		"report_builder/templates/includes/export_table.html",
 		{
 			"title": title,

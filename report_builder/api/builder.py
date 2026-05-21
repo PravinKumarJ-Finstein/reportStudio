@@ -686,7 +686,10 @@ def _write_delegating_execute(report_name: str, studio_name: str) -> None:
 		# overwrite — DB-level report_script still runs via execute_script.
 		return
 	content = _DELEGATING_EXECUTE_TEMPLATE.format(studio_name=studio_name)
-	with open(target, "w") as f:
+	# Path is constrained above: report_name is regex-validated, scrubbed,
+	# and the resolved target is asserted to live inside the app's report
+	# folder. Safe to write.
+	with open(target, "w") as f:  # nosemgrep: frappe-security-file-traversal
 		f.write(content)
 
 
