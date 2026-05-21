@@ -150,11 +150,11 @@ def run(CONFIG):
                 if p:
                     items.append(cast(p))
             if not items:
-                frappe.throw("Filter value list is empty.")
+                frappe.throw(frappe._("Filter value list is empty."))
             if op == "In":
                 return field.isin(items)
             return field.notin(items)
-        frappe.throw("Unknown filter operator: " + str(op))
+        frappe.throw(frappe._("Unknown filter operator: {0}").format(op))
 
     def apply_match_op(left, op, right):
         if op == "=":
@@ -169,7 +169,7 @@ def run(CONFIG):
             return left < right
         if op == "<=":
             return left <= right
-        frappe.throw("Unknown match operator: " + str(op))
+        frappe.throw(frappe._("Unknown match operator: {0}").format(op))
 
     def runtime_filter_empty(f):
         op = f.get("operator")
@@ -236,10 +236,10 @@ def run(CONFIG):
 
     def resolve_join_match_path(base_doctype, path):
         if not path:
-            frappe.throw("A field is missing.")
+            frappe.throw(frappe._("A field is missing."))
         segments = tuple(seg.strip() for seg in path.split(".") if seg.strip())
         if not segments:
-            frappe.throw("Empty field path.")
+            frappe.throw(frappe._("Empty field path."))
         if len(segments) == 1:
             meta = frappe.get_meta(base_doctype)
             fieldname = segments[0]
@@ -252,7 +252,7 @@ def run(CONFIG):
                 }
             df = meta.get_field(fieldname)
             if not df:
-                frappe.throw("Field not found: " + str(fieldname))
+                frappe.throw(frappe._("Field not found: {0}").format(fieldname))
             return {
                 "path": fieldname,
                 "fieldname": df.fieldname,
@@ -260,17 +260,17 @@ def run(CONFIG):
                 "table_doctype": "",
             }
         if len(segments) != 2:
-            frappe.throw("Join fields can only use one child-table hop.")
+            frappe.throw(frappe._("Join fields can only use one child-table hop."))
         meta = frappe.get_meta(base_doctype)
         table_df = meta.get_field(segments[0])
         if not table_df or table_df.fieldtype not in ("Table", "Table MultiSelect") or not table_df.options:
-            frappe.throw("Field is not a child table: " + str(segments[0]))
+            frappe.throw(frappe._("Field is not a child table: {0}").format(segments[0]))
         child_meta = frappe.get_meta(table_df.options)
         child_fieldname = segments[1]
         if child_fieldname not in BUILTIN_COLUMNS:
             child_df = child_meta.get_field(child_fieldname)
             if not child_df:
-                frappe.throw("Field not found: " + str(child_fieldname))
+                frappe.throw(frappe._("Field not found: {0}").format(child_fieldname))
             child_fieldname = child_df.fieldname
         return {
             "path": segments[0] + "." + segments[1],
@@ -320,7 +320,7 @@ def run(CONFIG):
             link_fname = prefix[-1]
             df = frappe.get_meta(parent_dt).get_field(link_fname)
             if not df or not df.options or df.fieldtype not in ("Link", "Table", "Table MultiSelect"):
-                frappe.throw("Cannot traverse field: " + str(link_fname))
+                frappe.throw(frappe._("Cannot traverse field: {0}").format(link_fname))
             child_dt = df.options
             alias = safe_alias(prefix)
             child = frappe.qb.DocType(child_dt).as_(alias)
