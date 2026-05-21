@@ -11,9 +11,18 @@ dependencies = [
     # "frappe~=15.0.0" # Installed and managed by bench.
 ]
 
+[project.urls]
+Homepage = "https://github.com/PravinKumarJ-Finstein/reportStudio"
+Repository = "https://github.com/PravinKumarJ-Finstein/reportStudio"
+Issues = "https://github.com/PravinKumarJ-Finstein/reportStudio/issues"
+
 [build-system]
 requires = ["flit_core >=3.4,<4"]
 build-backend = "flit_core.buildapi"
+
+# Frappe version range this app supports (NPM-style bounded semver range)
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<16.0.0"
 
 # These dependencies are only installed when developer mode is enabled
 [tool.bench.dev-dependencies]

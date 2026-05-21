@@ -139,6 +139,79 @@ def _parse_json_field(raw, default):
 	return default
 
 
+def dedupe_related_sources_in_config(cfg: dict) -> dict:
+	"""Collapse related sources that describe the identical join.
+
+	Ticking the same child table in two different join dialogs (or loading an
+	older report saved before the UI guarded against it) stores the same join
+	twice — e.g. ``c_base_items`` + ``c_base_items_2``. The engine then emits
+	two identical LEFT JOINs on the same child table, and every base row
+	cross-multiplies against the child rows once per duplicate — a
+	cartesian-style row blow-up.
+
+	This collapses duplicates — same related DocType, join type, child-table
+	flags and conditions — keeping the first occurrence, and remaps any
+	column / filter / group / sort / calculation that referenced a dropped
+	alias to its surviving twin. Pure dict-in / dict-out and idempotent, so it
+	is safe to run on every parse."""
+	if not isinstance(cfg, dict):
+		return cfg
+	sources = cfg.get("related_sources") or []
+	if not isinstance(sources, list) or len(sources) < 2:
+		return cfg
+
+	seen: dict[tuple, str] = {}
+	deduped: list = []
+	remap: dict[str, str] = {}
+	for rs in sources:
+		if not isinstance(rs, dict):
+			deduped.append(rs)
+			continue
+		conditions = rs.get("conditions")
+		if isinstance(conditions, str):
+			conditions = _parse_json_field(conditions, [])
+		sig = (
+			_coerce_str(rs.get("related_doctype")),
+			_coerce_str(rs.get("join_type")) or "Left Join",
+			bool(rs.get("is_child_table")),
+			_coerce_str(rs.get("child_parent_field")),
+			json.dumps(conditions or [], sort_keys=True, default=str),
+		)
+		alias = _coerce_str(rs.get("alias"))
+		if sig in seen and alias and seen[sig] != alias:
+			remap[alias] = seen[sig]
+		else:
+			seen.setdefault(sig, alias)
+			deduped.append(rs)
+
+	if not remap:
+		return cfg
+
+	out = dict(cfg)
+	out["related_sources"] = deduped
+	for section in ("columns", "filters", "group_by", "sort"):
+		for row in out.get(section) or []:
+			if isinstance(row, dict):
+				src = _coerce_str(row.get("source"))
+				if src in remap:
+					row["source"] = remap[src]
+	for calc in out.get("calculations") or []:
+		if not isinstance(calc, dict):
+			continue
+		expr = calc.get("expression")
+		if isinstance(expr, str):
+			expr = _parse_json_field(expr, {})
+		if isinstance(expr, dict):
+			for side in ("left", "right"):
+				operand = expr.get(side)
+				if isinstance(operand, dict) and operand.get("type") == "field":
+					src = _coerce_str(operand.get("source"))
+					if src in remap:
+						operand["source"] = remap[src]
+			calc["expression"] = expr
+	return out
+
+
 def parse(config) -> Config:
 	if isinstance(config, str):
 		try:
@@ -148,6 +221,8 @@ def parse(config) -> Config:
 
 	if not isinstance(config, dict):
 		frappe.throw(frappe._("Report configuration must be an object."))
+
+	config = dedupe_related_sources_in_config(config)
 
 	base_doctype = _coerce_str(config.get("base_doctype"))
 	if not base_doctype:

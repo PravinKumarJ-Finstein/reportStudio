@@ -13,74 +13,19 @@ native Frappe Query Reports.
 ## Table of contents
 
 - [Requirements](#requirements)
-- [Installation on a local bench](#installation-on-a-local-bench)
 - [Roles & permissions](#roles--permissions)
 - [Using Report Studio](#using-report-studio)
 - [Exporting](#exporting)
 - [Sharing & publishing](#sharing--publishing)
 - [How it works](#how-it-works)
 - [Limits & safety](#limits--safety)
-- [Development](#development)
 
 ---
 
 ## Requirements
 
-- A working **Frappe bench** (Frappe Framework **v15**)
+- Frappe Framework **v15**
 - Python **3.10+**
-- A site on the bench you can install apps onto
-
----
-
-## Installation on a local bench
-
-Run all commands from your bench directory (e.g. `~/frappe-bench`).
-
-### 1. Get the app
-
-If you have the app source already inside `apps/` (as in this repo), skip to step 2. Otherwise
-fetch it into the bench:
-
-```bash
-cd ~/frappe-bench
-bench get-app report_builder /path/to/report_builder
-# or from a git remote:
-# bench get-app https://github.com/<owner>/report_builder
-```
-
-### 2. Install the app on your site
-
-```bash
-bench --site <your-site-name> install-app report_builder
-```
-
-### 3. Run migrations (applies doctypes, patches and fixtures)
-
-```bash
-bench --site <your-site-name> migrate
-```
-
-### 4. Build assets and start the bench
-
-```bash
-bench build --app report_builder
-bench start
-```
-
-### 5. Open Report Studio
-
-Log in to the desk and go to:
-
-```
-http://localhost:8000/app/report-studio
-```
-
-It also appears as a **Report Studio** tile on the Apps screen.
-
-> **Updating later:** after pulling new changes, re-run
-> `bench --site <site> migrate && bench build --app report_builder`.
-
-> **Uninstalling:** `bench --site <site> uninstall-app report_builder`.
 
 ---
 
@@ -98,6 +43,9 @@ To let a user build reports, assign them the **Report Studio User** role (or Sys
 Importantly, the app **never bypasses Frappe permissions** — a user can only build reports on
 DocTypes they already have `read` access to, and row-level permission query conditions of the
 underlying DocTypes are still respected.
+
+After enabling the app, open Report Studio at `/app/report-studio` on your site. It also
+appears as a **Report Studio** tile on the Apps screen.
 
 ---
 
@@ -201,33 +149,6 @@ Key points:
   `Report Studio Share`.
 - **Published reports** use an inline runner (`report_builder.runtime.inline_runner`) so the
   generated standard report stays in sync with the Report Studio definition.
-
----
-
-## Development
-
-The repo is set up with `ruff` (lint + format) and `pre-commit`.
-
-```bash
-# install pre-commit hooks
-cd apps/report_builder
-pre-commit install
-
-# lint / format
-ruff check .
-ruff format .
-```
-
-### Running tests
-
-The engine has a unit-test suite under `report_builder/tests/`
-(`test_schema.py`, `test_filter_ops.py`, `test_query_engine.py`):
-
-```bash
-bench --site <your-site-name> run-tests --app report_builder
-```
-
-A GitHub Actions workflow runs these tests on CI.
 
 ---
 

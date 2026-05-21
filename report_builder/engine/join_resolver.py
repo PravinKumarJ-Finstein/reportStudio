@@ -87,6 +87,23 @@ def resolve(cfg, base_table, base_doctype: str, source_tables: dict[str, object]
 	}
 	link_joins: list[JoinSpec] = []
 
+	# Base-level child tables the user has ALSO joined explicitly, keyed by
+	# the parent Table fieldname. When a base nested path (e.g. items.qty)
+	# drills into one of these, reuse the explicit join's table instead of
+	# adding a second link-join: two LEFT JOINs on the same child table
+	# cross-multiply every parent row by the child rows once per join (2
+	# child rows -> 4, etc.).
+	base_child_sources: dict[str, str] = {}
+	for rs in cfg.related_sources:
+		if not getattr(rs, "is_child_table", False):
+			continue
+		parent_field = getattr(rs, "child_parent_field", "") or ""
+		if not parent_field:
+			continue
+		parent_alias = rs.conditions[0].left_source or "" if rs.conditions else ""
+		if parent_alias == "" and rs.alias in source_tables:
+			base_child_sources.setdefault(parent_field, rs.alias)
+
 	def ensure_link_join(prefix: tuple[str, ...]) -> tuple[object, str]:
 		if prefix in prefix_table:
 			return prefix_table[prefix]
@@ -99,6 +116,14 @@ def resolve(cfg, base_table, base_doctype: str, source_tables: dict[str, object]
 				frappe._("Cannot join through {0}; not a Link or child table.").format(link_fname)
 			)
 		child_dt = df.options
+		# A base nested path into a child table that is also an explicit
+		# related source: reuse that join's table, don't add a duplicate.
+		if df.fieldtype in ("Table", "Table MultiSelect") and not parent_prefix:
+			reuse_alias = base_child_sources.get(link_fname)
+			if reuse_alias:
+				reuse_table = source_tables[reuse_alias]
+				prefix_table[prefix] = (reuse_table, child_dt)
+				return reuse_table, child_dt
 		alias = _safe_alias(prefix)
 		child_table = frappe.qb.DocType(child_dt).as_(alias)
 		# Child tables join on parent.name == child.parent (and we narrow

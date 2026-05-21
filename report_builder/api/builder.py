@@ -667,15 +667,29 @@ def _write_delegating_execute(report_name: str, studio_name: str) -> None:
 	and write the stub in the first place)."""
 	import os
 
-	folder = _report_folder(report_name)
-	target = os.path.join(folder, frappe.scrub(report_name) + ".py")
+	_validate_studio_name(studio_name)
+	scrubbed = frappe.scrub(report_name)
+	if not scrubbed or "/" in scrubbed or ".." in scrubbed:
+		frappe.throw(frappe._("Invalid report name for on-disk stub: {0}").format(report_name))
+
+	app_root = os.path.realpath(frappe.get_app_path("report_builder"))
+	folder = os.path.realpath(_report_folder(report_name))
+	target = os.path.realpath(os.path.join(folder, scrubbed + ".py"))
+
+	# Defence-in-depth: refuse to write anywhere outside the app's report folder.
+	if not (folder.startswith(app_root + os.sep) and target.startswith(folder + os.sep)):
+		frappe.throw(frappe._("Refusing to write report stub outside app directory."))
+
 	if not os.path.isdir(folder):
 		# is_standard=Yes + developer_mode should have created this. If it
 		# didn't (e.g. developer_mode off), there's nothing on disk to
 		# overwrite — DB-level report_script still runs via execute_script.
 		return
 	content = _DELEGATING_EXECUTE_TEMPLATE.format(studio_name=studio_name)
-	with open(target, "w") as f:
+	# Path is constrained above: report_name is regex-validated, scrubbed,
+	# and the resolved target is asserted to live inside the app's report
+	# folder. Safe to write.
+	with open(target, "w") as f:  # nosemgrep: frappe-security-file-traversal
 		f.write(content)
 
 

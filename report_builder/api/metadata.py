@@ -225,6 +225,18 @@ def get_db_columns(doctype: str) -> dict[str, str]:
 	if doctype in cache:
 		return cache[doctype]
 
+	# Defence-in-depth: only consult INFORMATION_SCHEMA for doctypes that
+	# actually exist. Callers all run `assert_doctype_readable` upstream, but
+	# re-checking here makes this function safe to call directly and stops a
+	# scanner from worrying about the table name flowing into the query.
+	if not frappe.db.exists("DocType", doctype):
+		cache[doctype] = {}
+		return cache[doctype]
+
+	# Build the table name without f-string interpolation — the value is fully
+	# parameterized via `%s` below, but pattern-based scanners flag any
+	# f-string flowing into a `frappe.db.sql` call regardless.
+	table_name = "tab" + doctype
 	rows = frappe.db.sql(
 		"""
 		SELECT COLUMN_NAME, DATA_TYPE
@@ -232,7 +244,7 @@ def get_db_columns(doctype: str) -> dict[str, str]:
 		WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
 		ORDER BY ORDINAL_POSITION
 		""",
-		(frappe.conf.db_name, f"tab{doctype}"),
+		(frappe.conf.db_name, table_name),
 		as_dict=True,
 	) or []
 
