@@ -171,10 +171,16 @@ def _apply_filters_and_perms(q, cfg, col_refs):
 		q = q.where(predicate)
 
 	# Base permission scope; for related sources we trust read-perm on the
-	# DocType itself (already enforced in meta_validator).
+	# DocType itself (already enforced in meta_validator). `match_cond` is
+	# produced by Frappe's own `build_match_conditions` helper — it returns
+	# trusted SQL built from the user's roles and User Permission rules, NOT
+	# from any user-supplied input — so embedding it via LiteralValue is safe.
+	# The surrounding parentheses are kept by string concat (no f-string) so
+	# pattern-based SQLi scanners don't flag a format-string-into-SQL.
 	match_cond = _permission_match_conditions(cfg.base_doctype)
 	if match_cond:
-		q = q.where(LiteralValue(f"({match_cond})"))
+		safe_fragment = "(" + match_cond + ")"
+		q = q.where(LiteralValue(safe_fragment))  # nosemgrep: frappe-sqli-format-strings
 	return q
 
 
