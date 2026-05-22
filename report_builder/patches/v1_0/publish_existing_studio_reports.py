@@ -24,8 +24,10 @@ def execute():
 	if not rows:
 		return
 
+	# Run the backfill as Administrator so created/updated Report records get
+	# full permissions and Administrator ownership, then restore in `finally`.
 	previous_user = frappe.session.user
-	frappe.set_user("Administrator")
+	frappe.set_user("Administrator")  # nosemgrep: frappe-setuser
 	try:
 		for row in rows:
 			try:
@@ -36,4 +38,4 @@ def execute():
 					message=frappe.get_traceback(),
 				)
 	finally:
-		frappe.set_user(previous_user)
+		frappe.set_user(previous_user)  # nosemgrep: frappe-setuser

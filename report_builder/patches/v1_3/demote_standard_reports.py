@@ -49,8 +49,11 @@ def execute():
 		fields=["name"],
 	)
 
+	# Run the rename/republish as Administrator so the Report records and
+	# on-disk modules are created with full permissions and Administrator
+	# ownership, then restore the original user in `finally`.
 	previous_user = frappe.session.user
-	frappe.set_user("Administrator")
+	frappe.set_user("Administrator")  # nosemgrep: frappe-setuser
 	try:
 		for row in rows:
 			old_name = row.name
@@ -113,5 +116,5 @@ def execute():
 						message=frappe.get_traceback(),
 					)
 	finally:
-		frappe.set_user(previous_user)
+		frappe.set_user(previous_user)  # nosemgrep: frappe-setuser
 		frappe.db.commit()
